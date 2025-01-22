@@ -4,7 +4,6 @@ import tempfile
 
 from flask import Flask, request, render_template_string
 from scapy.all import rdpcap
-from stegano import lsb
 
 # Flask app instance
 app = Flask(__name__)
@@ -94,7 +93,8 @@ def reverse_engineering():
                 return render_template_string(HTML_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
                                               description=description)
             else:
-                return render_template_string(HTML_TEMPLATE, challenge=3, error="Flag not found in the binary.",
+                return render_template_string(HTML_TEMPLATE, challenge=3,
+                                              error="Flag not found in the binary or Line number incorrect.",
                                               description=description)
 
     return render_template_string(HTML_TEMPLATE, challenge=3, description=description)
@@ -115,13 +115,13 @@ def forensics():
             os.remove(temp_file_path)  # Clean up the temporary file
 
             for packet in packets:
-                print(packet.haslayer('Raw'))
                 if packet.haslayer('Raw') and "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}" in packet['Raw'].load.decode('utf-8',
                                                                                                                 errors='ignore') and request.form.get(
-                    'line', '') == '452':
+                    'line', '') == '452':  # File C4_68.pcap
                     return render_template_string(HTML_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
                                                   description=description)
-            return render_template_string(HTML_TEMPLATE, challenge=4, error="Flag not found in PCAP.",
+            return render_template_string(HTML_TEMPLATE, challenge=4,
+                                          error="Flag not found in PCAP or Line number incorrect.",
                                           description=description)
 
     return render_template_string(HTML_TEMPLATE, challenge=4, description=description)
@@ -135,16 +135,19 @@ def steganography():
         uploaded_file = request.files['file']
         if uploaded_file:
             try:
-                hidden_message = lsb.reveal(uploaded_file.stream)
-                if hidden_message == "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}" and request.form.get('line',
-                                                                                               '') == '206':  # File C5_51.jpeg
+                # Read the entire file content
+                file_content = uploaded_file.read()
+                flag = b"KEY{i_tES_TYU564678IUY^&*(I_E%$rf}"
+                if flag in file_content and request.form.get('line', '') == '206':  # File C5_51.jpeg
                     return render_template_string(HTML_TEMPLATE, challenge=5, success=True, flag=FLAG_5,
                                                   description=description)
                 else:
-                    return render_template_string(HTML_TEMPLATE, challenge=5, error="Hidden flag not found.",
+                    return render_template_string(HTML_TEMPLATE, challenge=5,
+                                                  error="Hidden flag not found or Line number incorrect.",
                                                   description=description)
             except Exception as e:
-                return render_template_string(HTML_TEMPLATE, challenge=5, error=f"Error: {e}", description=description)
+                return render_template_string(HTML_TEMPLATE, challenge=5, error=f"EXCEPTION: {e}",
+                                              description=description)
 
     return render_template_string(HTML_TEMPLATE, challenge=5, description=description)
 
@@ -188,10 +191,10 @@ HTML_TEMPLATE = """
         .error { color: red; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; }
-        input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; }
-        input[type="file"] { margin-bottom: 15px; }
+        input[type="text"], input[type="number"], input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; }
         button { padding: 10px 15px; background-color: #007BFF; color: white; border: none; cursor: pointer; }
         button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -209,37 +212,39 @@ HTML_TEMPLATE = """
         {% elif error %}
         <p class="error"><strong>Error:</strong> {{ error }}</p>
         {% endif %}
-        {% if challenge in [1, 2] %}
-            <form method="post">
-                {% if challenge == 1 %}
-                <div class="form-group">
-                    <label for="decrypted">Decrypted Message:</label>
-                    <input type="text" id="decrypted" name="decrypted" value="{{ request.form.get('decrypted', '') }}">
-                </div>
-                {% elif challenge == 2 %}
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="text" id="password" name="password">
-                </div>
-                {% endif %}
-                <button type="submit">Submit</button>
-            </form>
-        {% elif challenge in [3, 4, 5] %}
-            <form method="post" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="file">Upload File:</label>
-                    <input type="file" id="file" name="file">
-                </div>
-                <div class="form-group">
-                    <label for="line">Line Number:</label>
-                    <input type="text" id="line" name="line">
-                </div>
-                <button type="submit">Submit</button>
-            </form>
+        {% if not success %}
+            {% if challenge in [1, 2] %}
+                <form method="post">
+                    {% if challenge == 1 %}
+                    <div class="form-group">
+                        <label for="decrypted">Decrypted Message:</label>
+                        <input type="text" id="decrypted" name="decrypted" value="{{ request.form.get('decrypted', '') }}">
+                    </div>
+                    {% elif challenge == 2 %}
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input type="text" id="password" name="password">
+                    </div>
+                    {% endif %}
+                    <button type="submit">Submit</button>
+                </form>
+            {% elif challenge in [3, 4, 5] %}
+                <form method="post" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="file">Upload File:</label>
+                        <input type="file" id="file" name="file" accept=".bin,.pcap,.jpeg">
+                    </div>
+                    <div class="form-group">
+                        <label for="line">Line Number:</label>
+                        <input type="number" id="line" name="line">
+                    </div>
+                    <button type="submit">Submit</button>
+                </form>
+            {% endif %}
         {% endif %}
     </div>
 </body>
