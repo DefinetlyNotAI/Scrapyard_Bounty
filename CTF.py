@@ -3,7 +3,7 @@ import sqlite3
 import tempfile
 import time
 
-from flask import Flask, request, render_template_string, session, redirect, url_for
+from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
 from scapy.all import rdpcap
 
 # Flask app instance
@@ -29,7 +29,7 @@ MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 # Initialize SQLite database
 def init_db():
     if os.path.exists('users.db'):
-        os.remove('users.db')
+        return
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -43,7 +43,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             team_name TEXT NOT NULL,
-            score REAL DEFAULT 0
+            score REAL DEFAULT 0,
+            ip_address TEXT,
+            flags_submitted TEXT
         )
     ''')
     cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
@@ -57,19 +59,29 @@ def init_db():
 def signin():
     if request.method == 'POST':
         team_name = request.form.get('team_name')
+        if not team_name:
+            return render_template_string(SIGNIN_TEMPLATE, error="Team name is required.")
+
         session['team_name'] = team_name
+        ip_address = request.remote_addr
+
         conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name) VALUES (?)', (team_name,))
+        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (?, ?, ?)',
+                       (team_name, ip_address, ''))
         conn.commit()
         conn.close()
-        return redirect(url_for('home'))
+
+        resp = make_response(redirect(url_for('home')))
+        resp.set_cookie('team_name', team_name)
+        return resp
     return render_template_string(SIGNIN_TEMPLATE)
 
 
 # Submit page
 @app.route('/submit', methods=['GET', 'POST'])
 def submit():
+    points = 0
     if request.method == 'POST':
         flag = request.form.get('flag')
         team_name = session.get('team_name')
@@ -87,13 +99,20 @@ def submit():
                 FLAG_4: FLAG_4_SCORE,
                 FLAG_5: FLAG_5_SCORE
             }
-            points = flag_scores[flag] + (MAX_TIME - elapsed_time) / 20
-        points = round(points, 2)
+            points = round(flag_scores[flag] + (MAX_TIME - elapsed_time) / 20, 2)
+
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = ?', (team_name,))
+        flags_submitted = cursor.fetchone()[0].split(',')
+
+        if flag in flags_submitted:
+            return render_template_string(SUBMIT_TEMPLATE, error="Flag already submitted.")
 
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
-            conn = sqlite3.connect('users.db')
-            cursor = conn.cursor()
-            cursor.execute('UPDATE teams SET score = score + ? WHERE team_name = ?', (points, team_name))
+            flags_submitted.append(flag)
+            cursor.execute('UPDATE teams SET score = score + ?, flags_submitted = ? WHERE team_name = ?',
+                           (points, ','.join(flags_submitted), team_name))
             conn.commit()
             conn.close()
             return render_template_string(SUBMIT_TEMPLATE, success=True, points=points)
@@ -231,6 +250,8 @@ def steganography():
 # Home Route
 @app.route('/')
 def home():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     session['start_time'] = time.time()
     return HOME_TEMPLATE
 
