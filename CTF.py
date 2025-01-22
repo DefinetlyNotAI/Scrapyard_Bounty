@@ -1,18 +1,19 @@
 import os
-import sqlite3
 import tempfile
 import time
 
-from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
+import psycopg2
+from flask import (Flask, request, render_template_string, session, redirect,
+                   url_for, make_response, send_from_directory)
 from scapy.all import rdpcap
 
 # Flask app instance
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', None)
-if app.config['SECRET_KEY'] is None:
-    raise ValueError("SECRET_KEY environment variable is not set - UNSECURE.")
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', "None")
+if app.config['SECRET_KEY'] == "None":
+    print("WARNING: SECRET_KEY is not set. Please set it to a random value: Defaulting with None.")
 
 # Flags and awards
 FLAG_1 = "CTF{ROT-13-FLAG}"
@@ -29,32 +30,39 @@ FLAG_5_SCORE = 100
 MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 
-# Initialize SQLite database
+# Update init_db for PostgreSQL
 def init_db():
-    if os.path.exists('users.db'):
-        return
-    conn = sqlite3.connect('users.db')
+    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
     ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             team_name TEXT NOT NULL,
             score REAL DEFAULT 0,
             ip_address TEXT,
             flags_submitted TEXT
         )
     ''')
-    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
-                   ('admin', 'password123'))
+    # Insert admin user
+    cursor.execute('''
+        INSERT INTO users (username, password) VALUES (%s, %s)
+        ON CONFLICT (username) DO NOTHING
+    ''', ('admin', 'password123'))
     conn.commit()
     conn.close()
+
+
+# Favicon route
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico')
 
 
 # Sign-in page
@@ -68,9 +76,9 @@ def signin():
         session['team_name'] = team_name
         ip_address = request.remote_addr
 
-        conn = sqlite3.connect('users.db')
+        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (?, ?, ?)',
+        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
                        (team_name, ip_address, ''))
         conn.commit()
         conn.close()
@@ -104,9 +112,9 @@ def submit():
             }
             points = round(flag_scores[flag] + (MAX_TIME - elapsed_time) / 20, 2)
 
-        conn = sqlite3.connect('users.db')
+        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         cursor = conn.cursor()
-        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = ?', (team_name,))
+        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = %s', (team_name,))
         flags_submitted = cursor.fetchone()[0].split(',')
 
         if flag in flags_submitted:
@@ -114,7 +122,7 @@ def submit():
 
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
             flags_submitted.append(flag)
-            cursor.execute('UPDATE teams SET score = score + ?, flags_submitted = ? WHERE team_name = ?',
+            cursor.execute('UPDATE teams SET score = score + %s, flags_submitted = %s WHERE team_name = %s',
                            (round(points, 2), ','.join(flags_submitted), team_name))
             conn.commit()
             conn.close()
@@ -128,7 +136,7 @@ def submit():
 # Leaderboard page
 @app.route('/leaderboard')
 def leaderboard():
-    conn = sqlite3.connect('users.db')
+    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
     cursor = conn.cursor()
     cursor.execute('SELECT team_name, score FROM teams ORDER BY score DESC')
     teams = cursor.fetchall()
@@ -162,7 +170,7 @@ def weblogin():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        conn = sqlite3.connect('users.db')
+        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         cursor = conn.cursor()
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
         cursor.execute(query)
