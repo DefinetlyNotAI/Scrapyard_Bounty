@@ -158,9 +158,9 @@ def home():
 <ul>
     <li><a href="/cryptography">Cryptography Challenge</a></li>
     <li><a href="/weblogin">Web Exploitation Challenge</a></li>
-    <li><a href="/reverse-engineering">Reverse Engineering Challenge</a></li>
-    <li><a href="/forensics">Forensics Challenge</a></li>
-    <li><a href="/steganography">Steganography Challenge</a></li>
+    <li><a href="/reverse-engineering">Reverse Engineering Challenge</a> - <a href="/src/assets/bin.zip">Download Files</a></li>
+    <li><a href="/forensics">Forensics Challenge</a> - <a href="/src/assets/pcap.zip">Download Files</a></li>
+    <li><a href="/steganography">Steganography Challenge</a> - <a href="/src/assets/images.zip">Download Files</a></li>
 </ul>
 <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
