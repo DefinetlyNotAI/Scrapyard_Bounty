@@ -4,6 +4,10 @@ import shutil
 
 from faker import Faker
 
+# NOTICE
+# The line in CTF.py is hardcoded as I couldn't find a way to dynamically get the correct line
+# Rerunning this script will generate a new flag location, and so you must find the correct line again
+
 fake = Faker()
 
 # embed_flag_in_image.py

@@ -84,7 +84,7 @@ def weblogin():
 # Challenge 3: Reverse Engineering
 @app.route('/reverse-engineering', methods=['GET', 'POST'])
 def reverse_engineering():
-    description = "Analyze a binary file to find a hardcoded flag."
+    description = "Analyze a binary file to find a hardcoded key (Format KEY{xxxx}). First you must find the correct BIN file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
         if uploaded_file:
@@ -103,7 +103,7 @@ def reverse_engineering():
 # Challenge 4: Forensics
 @app.route('/forensics', methods=['GET', 'POST'])
 def forensics():
-    description = "Analyze a PCAP file in Wireshark to find a hidden HTTP flag."
+    description = "Analyze a PCAP file in [Wireshark] to find a hidden key (Format KEY{xxxx}). First you must find the correct PCAP file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
         if uploaded_file:
@@ -130,7 +130,7 @@ def forensics():
 # Challenge 5: Steganography
 @app.route('/steganography', methods=['GET', 'POST'])
 def steganography():
-    description = "Extract hidden data from an image file using src like StegSolve."
+    description = "Extract hidden data (Format KEY{xxxx}) from an image file using a automated script. First you must find the correct JPEG file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
         if uploaded_file:
@@ -153,16 +153,24 @@ def steganography():
 @app.route('/')
 def home():
     return """
-    <h1>Welcome to the CTF Challenges!</h1>
-    <p>Select a challenge to start:</p>
-    <ul>
-        <li><a href="/cryptography">Cryptography Challenge</a></li>
-        <li><a href="/weblogin">Web Exploitation Challenge</a></li>
-        <li><a href="/reverse-engineering">Reverse Engineering Challenge</a></li>
-        <li><a href="/forensics">Forensics Challenge</a></li>
-        <li><a href="/steganography">Steganography Challenge</a></li>
-    </ul>
-    """
+<h1>Welcome to the CTF Challenges!</h1>
+<p>Select a challenge to start:</p>
+<ul>
+    <li><a href="/cryptography">Cryptography Challenge</a></li>
+    <li><a href="/weblogin">Web Exploitation Challenge</a></li>
+    <li><a href="/reverse-engineering">Reverse Engineering Challenge</a></li>
+    <li><a href="/forensics">Forensics Challenge</a></li>
+    <li><a href="/steganography">Steganography Challenge</a></li>
+</ul>
+<style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #007BFF; }
+    ul { list-style-type: none; padding: 0; }
+    li { margin: 10px 0; }
+    a { text-decoration: none; color: #007BFF; }
+    a:hover { text-decoration: underline; }
+</style>
+"""
 
 
 # HTML template for challenges
