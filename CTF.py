@@ -115,6 +115,7 @@ def submit():
                            (points, ','.join(flags_submitted), team_name))
             conn.commit()
             conn.close()
+            session['start_time'] = time.time()  # Reset the timer
             return render_template_string(SUBMIT_TEMPLATE, success=True, points=points)
         else:
             return render_template_string(SUBMIT_TEMPLATE, error="Invalid flag.")
@@ -252,8 +253,9 @@ def steganography():
 def home():
     if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
         return redirect(url_for('signin'))
-    session['start_time'] = time.time()
-    return HOME_TEMPLATE
+    if 'start_time' not in session:
+        session['start_time'] = time.time()
+    return render_template_string(HOME_TEMPLATE)
 
 
 # HTML template for home page
