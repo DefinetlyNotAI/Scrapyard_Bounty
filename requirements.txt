@@ -1,3 +1,4 @@
 scapy~=2.5.0
 Faker~=30.3.0
+psycopg2~=2.9.10
 Flask~=3.1.0
