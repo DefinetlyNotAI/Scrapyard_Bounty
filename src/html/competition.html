@@ -54,6 +54,15 @@
             background-color: #cccccc;
             cursor: not-allowed;
         }
+
+        .back-button {
+            margin-top: 20px;
+            background-color: #6c757d;
+        }
+
+        .back-button:hover {
+            background-color: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -105,6 +114,7 @@
     </form>
     {% endif %}
     {% endif %}
+    <button class="back-button" onclick="window.location.href='/'">Back to Home</button>
 </div>
 </body>
 </html>

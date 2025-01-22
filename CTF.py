@@ -10,7 +10,8 @@ from scapy.all import rdpcap
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = "i_tES_TYU564678IUY^&*(I_E%$rf"  # Also the subkey for c3, c4 and c5
+app.config['SECRET_KEY'] = open("secret.txt",
+                                "r").read()  # For people who will look at the source code/git history, the secret key is not the same fools.
 # Flags and awards
 FLAG_1 = "CTF{ROT-13-FLAG}"
 FLAG_1_SCORE = 50
@@ -112,11 +113,11 @@ def submit():
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
             flags_submitted.append(flag)
             cursor.execute('UPDATE teams SET score = score + ?, flags_submitted = ? WHERE team_name = ?',
-                           (points, ','.join(flags_submitted), team_name))
+                           (round(points, 2), ','.join(flags_submitted), team_name))
             conn.commit()
             conn.close()
             session['start_time'] = time.time()  # Reset the timer
-            return render_template_string(SUBMIT_TEMPLATE, success=True, points=points)
+            return render_template_string(SUBMIT_TEMPLATE, success=True, points=round(points, 2))
         else:
             return render_template_string(SUBMIT_TEMPLATE, error="Invalid flag.")
     return render_template_string(SUBMIT_TEMPLATE)
