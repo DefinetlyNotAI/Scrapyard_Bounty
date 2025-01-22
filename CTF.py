@@ -1,8 +1,8 @@
 import os
-import sqlite3
 import tempfile
 import time
 
+import sqlitecloud
 from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
 from scapy.all import rdpcap
 
@@ -28,21 +28,22 @@ FLAG_5_SCORE = 100
 # Time awards
 MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
+# Open the connection to SQLite Cloud
+conn = sqlitecloud.connect(os.getenv('SQLITE_CLOUD'))
 
-# Initialize SQLite database
+
 def init_db():
-    if os.path.exists('users.db'):
+    cursor = conn.execute('SELECT name FROM sqlite_master WHERE type="table" AND name="users";')
+    if cursor.fetchone() is not None:
         return
-    conn = sqlite3.connect('users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
+    conn.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
     ''')
-    cursor.execute('''
+    conn.execute('''
         CREATE TABLE IF NOT EXISTS teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             team_name TEXT NOT NULL,
@@ -51,10 +52,9 @@ def init_db():
             flags_submitted TEXT
         )
     ''')
-    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
-                   ('admin', 'password123'))
+    conn.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
+                 ('admin', 'password123'))
     conn.commit()
-    conn.close()
 
 
 # Sign-in page
@@ -68,7 +68,6 @@ def signin():
         session['team_name'] = team_name
         ip_address = request.remote_addr
 
-        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (?, ?, ?)',
                        (team_name, ip_address, ''))
@@ -104,7 +103,6 @@ def submit():
             }
             points = round(flag_scores[flag] + (MAX_TIME - elapsed_time) / 20, 2)
 
-        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = ?', (team_name,))
         flags_submitted = cursor.fetchone()[0].split(',')
@@ -128,7 +126,6 @@ def submit():
 # Leaderboard page
 @app.route('/leaderboard')
 def leaderboard():
-    conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('SELECT team_name, score FROM teams ORDER BY score DESC')
     teams = cursor.fetchall()
@@ -162,7 +159,6 @@ def weblogin():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
         cursor.execute(query)
