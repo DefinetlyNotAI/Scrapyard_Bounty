@@ -10,8 +10,10 @@ from scapy.all import rdpcap
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = open("secret.txt",
-                                "r").read()  # For people who will look at the source code/git history, the secret key is not the same fools.
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', None)
+if app.config['SECRET_KEY'] is None:
+    raise ValueError("SECRET_KEY environment variable is not set - UNSECURE.")
+
 # Flags and awards
 FLAG_1 = "CTF{ROT-13-FLAG}"
 FLAG_1_SCORE = 50
