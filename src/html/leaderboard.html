@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Leaderboard</title>
+</head>
+<body>
+<h1>Leaderboard</h1>
+<table>
+    <thead>
+    <tr>
+        <th>Team Name</th>
+        <th>Score</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for team in teams %}
+    <tr>
+        <td>{{ team[0] }}</td>
+        <td>{{ team[1] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>

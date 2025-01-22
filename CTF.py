@@ -1,24 +1,35 @@
 import os
 import sqlite3
 import tempfile
+import time
 
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, session, redirect, url_for
 from scapy.all import rdpcap
 
 # Flask app instance
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = "i_tES_TYU564678IUY^&*(I_E%$rf"  # Also the key for c3, c4 and c5
+app.config['SECRET_KEY'] = "i_tES_TYU564678IUY^&*(I_E%$rf"  # Also the subkey for c3, c4 and c5
+# Flags and awards
 FLAG_1 = "CTF{ROT-13-FLAG}"
+FLAG_1_SCORE = 50
 FLAG_2 = "CTF{SQLI_FLAG}"
+FLAG_2_SCORE = 75
 FLAG_3 = "CTF{REVERSE_ME}"
+FLAG_3_SCORE = 125
 FLAG_4 = "CTF{PCAP_FLAG}"
+FLAG_4_SCORE = 150
 FLAG_5 = "CTF{STEGANOGRAPHY_FLAG}"
+FLAG_5_SCORE = 100
+# Time awards
+MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 
 # Initialize SQLite database
 def init_db():
+    if os.path.exists('users.db'):
+        os.remove('users.db')
     conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -28,13 +39,78 @@ def init_db():
             password TEXT NOT NULL
         )
     ''')
-    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)', ('admin', 'password123'))
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS teams (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            team_name TEXT NOT NULL,
+            score REAL DEFAULT 0
+        )
+    ''')
+    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
+                   ('admin', 'password123'))
     conn.commit()
     conn.close()
 
 
-if not os.path.exists('users.db'):
-    init_db()
+# Sign-in page
+@app.route('/signin', methods=['GET', 'POST'])
+def signin():
+    if request.method == 'POST':
+        team_name = request.form.get('team_name')
+        session['team_name'] = team_name
+        conn = sqlite3.connect('users.db')
+        cursor = conn.cursor()
+        cursor.execute('INSERT INTO teams (team_name) VALUES (?)', (team_name,))
+        conn.commit()
+        conn.close()
+        return redirect(url_for('home'))
+    return render_template_string(SIGNIN_TEMPLATE)
+
+
+# Submit page
+@app.route('/submit', methods=['GET', 'POST'])
+def submit():
+    if request.method == 'POST':
+        flag = request.form.get('flag')
+        team_name = session.get('team_name')
+        if not team_name:
+            return redirect(url_for('signin'))
+
+        start_time = session.get('start_time', time.time())
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
+            flag_scores = {
+                FLAG_1: FLAG_1_SCORE,
+                FLAG_2: FLAG_2_SCORE,
+                FLAG_3: FLAG_3_SCORE,
+                FLAG_4: FLAG_4_SCORE,
+                FLAG_5: FLAG_5_SCORE
+            }
+            points = flag_scores[flag] + (MAX_TIME - elapsed_time) / 20
+        points = round(points, 2)
+
+        if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
+            conn = sqlite3.connect('users.db')
+            cursor = conn.cursor()
+            cursor.execute('UPDATE teams SET score = score + ? WHERE team_name = ?', (points, team_name))
+            conn.commit()
+            conn.close()
+            return render_template_string(SUBMIT_TEMPLATE, success=True, points=points)
+        else:
+            return render_template_string(SUBMIT_TEMPLATE, error="Invalid flag.")
+    return render_template_string(SUBMIT_TEMPLATE)
+
+
+# Leaderboard page
+@app.route('/leaderboard')
+def leaderboard():
+    conn = sqlite3.connect('users.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT team_name, score FROM teams ORDER BY score DESC')
+    teams = cursor.fetchall()
+    conn.close()
+    return render_template_string(LEADERBOARD_TEMPLATE, teams=teams)
 
 
 # Challenge 1: Cryptography
@@ -46,13 +122,13 @@ def cryptography():
     if request.method == 'POST':
         user_input = request.form.get('decrypted')
         if user_input == "THIS_IS_THE_FLAG":
-            return render_template_string(HTML_TEMPLATE, challenge=1, success=True, flag=FLAG_1,
+            return render_template_string(COMP_TEMPLATE, challenge=1, success=True, flag=FLAG_1,
                                           description=description, encrypted=encrypted_message)
         else:
-            return render_template_string(HTML_TEMPLATE, challenge=1, error="Incorrect decryption.",
+            return render_template_string(COMP_TEMPLATE, challenge=1, error="Incorrect decryption.",
                                           description=description, encrypted=encrypted_message)
 
-    return render_template_string(HTML_TEMPLATE, challenge=1, description=description, encrypted=encrypted_message)
+    return render_template_string(COMP_TEMPLATE, challenge=1, description=description, encrypted=encrypted_message)
 
 
 # Challenge 2: Web Exploitation
@@ -71,13 +147,13 @@ def weblogin():
         conn.close()
 
         if user:
-            return render_template_string(HTML_TEMPLATE, challenge=2, success=True, flag=FLAG_2,
+            return render_template_string(COMP_TEMPLATE, challenge=2, success=True, flag=FLAG_2,
                                           description=description)
         else:
-            return render_template_string(HTML_TEMPLATE, challenge=2, error="Invalid credentials.",
+            return render_template_string(COMP_TEMPLATE, challenge=2, error="Invalid credentials.",
                                           description=description)
 
-    return render_template_string(HTML_TEMPLATE, challenge=2, description=description)
+    return render_template_string(COMP_TEMPLATE, challenge=2, description=description)
 
 
 # Challenge 3: Reverse Engineering
@@ -90,14 +166,14 @@ def reverse_engineering():
             binary_data = uploaded_file.read()
             if "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}".encode() in binary_data and request.form.get('line',
                                                                                                  '') == '136':  # File C3_79.bin
-                return render_template_string(HTML_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
+                return render_template_string(COMP_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
                                               description=description)
             else:
-                return render_template_string(HTML_TEMPLATE, challenge=3,
+                return render_template_string(COMP_TEMPLATE, challenge=3,
                                               error="Flag not found in the binary or Line number incorrect.",
                                               description=description)
 
-    return render_template_string(HTML_TEMPLATE, challenge=3, description=description)
+    return render_template_string(COMP_TEMPLATE, challenge=3, description=description)
 
 
 # Challenge 4: Forensics
@@ -115,16 +191,16 @@ def forensics():
             os.remove(temp_file_path)  # Clean up the temporary file
 
             for packet in packets:
-                if packet.haslayer('Raw') and "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}" in packet['Raw'].load.decode('utf-8',
-                                                                                                                errors='ignore') and request.form.get(
-                    'line', '') == '452':  # File C4_68.pcap
-                    return render_template_string(HTML_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
+                if (packet.haslayer('Raw') and "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}" in packet['Raw'].load.decode(
+                        'utf-8', errors='ignore')
+                        and request.form.get('line', '') == '452'):  # File C4_68.pcap
+                    return render_template_string(COMP_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
                                                   description=description)
-            return render_template_string(HTML_TEMPLATE, challenge=4,
+            return render_template_string(COMP_TEMPLATE, challenge=4,
                                           error="Flag not found in PCAP or Line number incorrect.",
                                           description=description)
 
-    return render_template_string(HTML_TEMPLATE, challenge=4, description=description)
+    return render_template_string(COMP_TEMPLATE, challenge=4, description=description)
 
 
 # Challenge 5: Steganography
@@ -139,118 +215,45 @@ def steganography():
                 file_content = uploaded_file.read()
                 flag = b"KEY{i_tES_TYU564678IUY^&*(I_E%$rf}"
                 if flag in file_content and request.form.get('line', '') == '206':  # File C5_51.jpeg
-                    return render_template_string(HTML_TEMPLATE, challenge=5, success=True, flag=FLAG_5,
+                    return render_template_string(COMP_TEMPLATE, challenge=5, success=True, flag=FLAG_5,
                                                   description=description)
                 else:
-                    return render_template_string(HTML_TEMPLATE, challenge=5,
+                    return render_template_string(COMP_TEMPLATE, challenge=5,
                                                   error="Hidden flag not found or Line number incorrect.",
                                                   description=description)
             except Exception as e:
-                return render_template_string(HTML_TEMPLATE, challenge=5, error=f"EXCEPTION: {e}",
+                return render_template_string(COMP_TEMPLATE, challenge=5, error=f"EXCEPTION: {e}",
                                               description=description)
 
-    return render_template_string(HTML_TEMPLATE, challenge=5, description=description)
+    return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
 
 # Home Route
 @app.route('/')
 def home():
-    return """
-<h1>Welcome to the CTF Challenges!</h1>
-<p>Select a challenge to start:</p>
-<ul>
-    <li><a href="/cryptography">Cryptography Challenge</a></li>
-    <li><a href="/weblogin">Web Exploitation Challenge</a></li>
-    <li><a href="/reverse-engineering">Reverse Engineering Challenge</a> - <a href="/src/assets/bin.zip">Download Files</a></li>
-    <li><a href="/forensics">Forensics Challenge</a> - <a href="/src/assets/pcap.zip">Download Files</a></li>
-    <li><a href="/steganography">Steganography Challenge</a> - <a href="/src/assets/images.zip">Download Files</a></li>
-</ul>
-<style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { color: #007BFF; }
-    ul { list-style-type: none; padding: 0; }
-    li { margin: 10px 0; }
-    a { text-decoration: none; color: #007BFF; }
-    a:hover { text-decoration: underline; }
-</style>
-"""
+    session['start_time'] = time.time()
+    return HOME_TEMPLATE
 
+
+# HTML template for home page
+with open("src/html/home.html", "r") as f:
+    HOME_TEMPLATE = f.read()
 
 # HTML template for challenges
-HTML_TEMPLATE = """
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CTF Challenge</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .container { max-width: 600px; margin: auto; }
-        .success { color: green; }
-        .error { color: red; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="number"], input[type="file"] { width: 100%; padding: 8px; box-sizing: border-box; }
-        button { padding: 10px 15px; background-color: #007BFF; color: white; border: none; cursor: pointer; }
-        button:hover { background-color: #0056b3; }
-        button:disabled { background-color: #cccccc; cursor: not-allowed; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Challenge {{ challenge }}</h1>
-        {% if description %}
-        <p><strong>Description:</strong> {{ description }}</p>
-        {% endif %}
-        {% if encrypted %}
-        <p><strong>Encrypted Message:</strong> {{ encrypted }}</p>
-        {% endif %}
-        {% if success %}
-        <p class="success"><strong>Congratulations!</strong> You've solved the challenge.</p>
-        <p><strong>Your Token:</strong> {{ flag }}</p>
-        {% elif error %}
-        <p class="error"><strong>Error:</strong> {{ error }}</p>
-        {% endif %}
-        {% if not success %}
-            {% if challenge in [1, 2] %}
-                <form method="post">
-                    {% if challenge == 1 %}
-                    <div class="form-group">
-                        <label for="decrypted">Decrypted Message:</label>
-                        <input type="text" id="decrypted" name="decrypted" value="{{ request.form.get('decrypted', '') }}">
-                    </div>
-                    {% elif challenge == 2 %}
-                    <div class="form-group">
-                        <label for="username">Username:</label>
-                        <input type="text" id="username" name="username">
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password:</label>
-                        <input type="text" id="password" name="password">
-                    </div>
-                    {% endif %}
-                    <button type="submit">Submit</button>
-                </form>
-            {% elif challenge in [3, 4, 5] %}
-                <form method="post" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="file">Upload File:</label>
-                        <input type="file" id="file" name="file" accept=".bin,.pcap,.jpeg">
-                    </div>
-                    <div class="form-group">
-                        <label for="line">Line Number:</label>
-                        <input type="number" id="line" name="line">
-                    </div>
-                    <button type="submit">Submit</button>
-                </form>
-            {% endif %}
-        {% endif %}
-    </div>
-</body>
-</html>
-"""
+with open("src/html/competition.html", "r") as f:
+    COMP_TEMPLATE = f.read()
+
+# HTML templates for sign-in, submit and leaderboard pages
+with open("src/html/signin.html", "r") as f:
+    SIGNIN_TEMPLATE = f.read()
+
+with open("src/html/submit.html", "r") as f:
+    SUBMIT_TEMPLATE = f.read()
+
+with open("src/html/leaderboard.html", "r") as f:
+    LEADERBOARD_TEMPLATE = f.read()
 
 # Run the app
 if __name__ == "__main__":
+    init_db()
     app.run(debug=True)

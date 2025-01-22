@@ -8,8 +8,8 @@ from os import mkdir
 
 flag = b"KEY{i_tES_TYU564678IUY^&*(I_E%$rf}"
 
-if not os.path.exists("assets/bin"):
-    mkdir("assets/bin")
+if not os.path.exists("../assets/bin"):
+    mkdir("../assets/bin")
 
 when = random.randint(0, 100)
 

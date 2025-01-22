@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>CTF Challenge</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        .success {
+            color: green;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="text"], input[type="number"], input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Challenge {{ challenge }}</h1>
+    {% if description %}
+    <p><strong>Description:</strong> {{ description }}</p>
+    {% endif %}
+    {% if encrypted %}
+    <p><strong>Encrypted Message:</strong> {{ encrypted }}</p>
+    {% endif %}
+    {% if success %}
+    <p class="success"><strong>Congratulations!</strong> You've solved the challenge.</p>
+    <p><strong>Your Token:</strong> {{ flag }}</p>
+    {% elif error %}
+    <p class="error"><strong>Error:</strong> {{ error }}</p>
+    {% endif %}
+    {% if not success %}
+    {% if challenge in [1, 2] %}
+    <form method="post">
+        {% if challenge == 1 %}
+        <div class="form-group">
+            <label for="decrypted">Decrypted Message:</label>
+            <input id="decrypted" name="decrypted" type="text" value="{{ request.form.get('decrypted', '') }}">
+        </div>
+        {% elif challenge == 2 %}
+        <div class="form-group">
+            <label for="username">Username:</label>
+            <input id="username" name="username" type="text">
+        </div>
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input id="password" name="password" type="text">
+        </div>
+        {% endif %}
+        <button type="submit">Submit</button>
+    </form>
+    {% elif challenge in [3, 4, 5] %}
+    <form enctype="multipart/form-data" method="post">
+        <div class="form-group">
+            <label for="file">Upload File:</label>
+            <input accept=".bin,.pcap,.jpeg" id="file" name="file" type="file">
+        </div>
+        <div class="form-group">
+            <label for="line">Line Number:</label>
+            <input id="line" name="line" type="number">
+        </div>
+        <button type="submit">Submit</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div>
+</body>
+</html>

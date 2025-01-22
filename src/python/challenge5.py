@@ -12,7 +12,7 @@ fake = Faker()
 
 # embed_flag_in_image.py
 flag = "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}"
-input_image_path = "assets/scrapyard.jpeg"
+input_image_path = "../assets/scrapyard.jpeg"
 
 # Read the original image file
 with open(input_image_path, "rb") as image_file:
@@ -24,9 +24,9 @@ image_data_with_flag = image_data + fake.text(max_nb_chars=10000).encode() + fla
 
 import random
 
-if os.path.exists("assets/images"):
-    shutil.rmtree("assets/images")
-os.makedirs("assets/images")
+if os.path.exists("../assets/images"):
+    shutil.rmtree("../assets/images")
+os.makedirs("../assets/images")
 
 # Generate fake text and embed the flag in one of the files
 for i in range(100):
