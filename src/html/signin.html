@@ -6,9 +6,17 @@
     <title>Sign In</title>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
             font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #f06, #f79);
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
             color: #fff;
             display: flex;
             justify-content: center;
@@ -17,58 +25,143 @@
             margin: 0;
         }
 
+        @keyframes gradient {
+            0% {
+                background-position: 0 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0 50%;
+            }
+        }
+
         .container {
             background: rgba(255, 255, 255, 0.1);
             padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
             backdrop-filter: blur(10px);
-            text-align: center;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transform: translateY(0);
+            transition: all 0.3s ease;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
         }
 
         h1 {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            letter-spacing: 1px;
         }
 
         form {
             display: flex;
             flex-direction: column;
             align-items: center;
+            gap: 20px;
+        }
+
+        .input-group {
+            position: relative;
+            width: 100%;
         }
 
         label {
-            font-size: 1.2em;
-            margin-bottom: 10px;
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.8);
         }
 
         input {
-            padding: 10px;
-            border: none;
-            border-radius: 5px;
-            margin-bottom: 20px;
             width: 100%;
-            max-width: 300px;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input:focus + label,
+        input:not(:placeholder-shown) + label {
+            top: 0;
+            transform: translateY(-150%) scale(0.9);
+            color: white;
         }
 
         button {
-            background-color: #007BFF;
+            background: rgba(255, 255, 255, 0.2);
             color: white;
-            padding: 10px 20px;
+            padding: 15px 30px;
             border: none;
-            border-radius: 5px;
+            border-radius: 10px;
             cursor: pointer;
-            transition: background-color 0.3s;
-            font-size: 1.2em;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
         }
 
         button:hover {
-            background-color: #0056b3;
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(1px);
         }
 
         .error {
             color: #ff4d4d;
             margin-top: 10px;
+            font-size: 0.9em;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .error.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            input {
+                padding: 12px;
+            }
         }
     </style>
 </head>
@@ -76,23 +169,66 @@
 <div class="container">
     <h1>Sign In</h1>
     <form id="signin-form" method="post">
-        <label for="team_name">Team Name:</label>
-        <input id="team_name" name="team_name" required type="text">
-        <button type="submit">Sign In</button>
-        <div class="error" id="error-message" style="display: none;">Please enter your team name.</div>
+        <div class="input-group">
+            <input id="team_name" name="team_name" placeholder=" " required type="text">
+            <label for="team_name">Team Name</label>
+        </div>
+        <button type="submit">
+            Sign In
+            <br>
+        </button>
+        <div class="error" id="error-message">Please enter your team name.</div>
     </form>
 </div>
+
 <script>
-    document.getElementById('signin-form').addEventListener('submit', function (event) {
-        const teamNameInput = document.getElementById('team_name');
-        const errorMessage = document.getElementById('error-message');
-        if (teamNameInput.value.trim() === '') {
-            event.preventDefault();
-            errorMessage.style.display = 'block';
-        } else {
-            errorMessage.style.display = 'none';
+    const form = document.getElementById('signin-form');
+    const teamNameInput = document.getElementById('team_name');
+    const errorMessage = document.getElementById('error-message');
+
+    // Add input validation on typing
+    teamNameInput.addEventListener('input', function () {
+        if (this.value.trim() !== '') {
+            errorMessage.classList.remove('visible');
         }
     });
+
+    // Add focus effect
+    teamNameInput.addEventListener('focus', function () {
+        this.parentElement.style.transform = 'scale(1.02)';
+    });
+
+    teamNameInput.addEventListener('blur', function () {
+        this.parentElement.style.transform = 'scale(1)';
+    });
+
+    // Form submission handling
+    form.addEventListener('submit', function (event) {
+        if (teamNameInput.value.trim() === '') {
+            event.preventDefault();
+            errorMessage.classList.add('visible');
+            teamNameInput.focus();
+
+            // Add shake animation to input
+            teamNameInput.style.animation = 'shake 0.5s';
+            setTimeout(() => {
+                teamNameInput.style.animation = '';
+            }, 500);
+        } else {
+            errorMessage.classList.remove('visible');
+        }
+    });
+
+    // Add shake animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+    `;
+    document.head.appendChild(style);
 </script>
 </body>
 </html>

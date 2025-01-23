@@ -1,10 +1,9 @@
 import os
+import sqlite3
 import tempfile
 import time
 
-import psycopg2
-from flask import (Flask, request, render_template_string, session, redirect,
-                   url_for, make_response, send_from_directory)
+from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
 from scapy.all import rdpcap
 
 # Flask app instance
@@ -13,9 +12,10 @@ app = Flask(__name__)
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', "None")
 if app.config['SECRET_KEY'] == "None":
-    print("WARNING: SECRET_KEY is not set. Please set it to a random value: Defaulting with None.")
+    print("WARNING: SECRET_KEY is not set. Please set it to a random value: Defaulting with 'None'.")
 
 # Flags and awards
+# TODO Set to a env file, and change the keys themselves
 FLAG_1 = "CTF{ROT-13-FLAG}"
 FLAG_1_SCORE = 50
 FLAG_2 = "CTF{SQLI_FLAG}"
@@ -26,43 +26,38 @@ FLAG_4 = "CTF{PCAP_FLAG}"
 FLAG_4_SCORE = 150
 FLAG_5 = "CTF{STEGANOGRAPHY_FLAG}"
 FLAG_5_SCORE = 100
+
 # Time awards
 MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 
-# Update init_db for PostgreSQL
+# Initialize SQLite database
+# TODO Make this use a sqlite server hoster
 def init_db():
-    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+    if os.path.exists('users.db'):
+        return
+    conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
     ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS teams (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             team_name TEXT NOT NULL,
             score REAL DEFAULT 0,
             ip_address TEXT,
             flags_submitted TEXT
         )
     ''')
-    # Insert admin user
-    cursor.execute('''
-        INSERT INTO users (username, password) VALUES (%s, %s)
-        ON CONFLICT (username) DO NOTHING
-    ''', ('admin', 'password123'))
+    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
+                   ('admin', 'password123'))
     conn.commit()
     conn.close()
-
-
-# Favicon route
-@app.route('/favicon.ico')
-def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico')
 
 
 # Sign-in page
@@ -73,12 +68,13 @@ def signin():
         if not team_name:
             return render_template_string(SIGNIN_TEMPLATE, error="Team name is required.")
 
+        # FIXME If username already exists output an error saying unauthorized
         session['team_name'] = team_name
         ip_address = request.remote_addr
 
-        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
+        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (?, ?, ?)',
                        (team_name, ip_address, ''))
         conn.commit()
         conn.close()
@@ -87,6 +83,14 @@ def signin():
         resp.set_cookie('team_name', team_name)
         return resp
     return render_template_string(SIGNIN_TEMPLATE)
+
+
+# Favicon
+# FIXME
+"""@app.route('/favicon.ico', methods=['GET'])
+def fav():
+    return open("favicon.ico")
+"""
 
 
 # Submit page
@@ -110,11 +114,11 @@ def submit():
                 FLAG_4: FLAG_4_SCORE,
                 FLAG_5: FLAG_5_SCORE
             }
-            points = round(flag_scores[flag] + (MAX_TIME - elapsed_time) / 20, 2)
+            points = round(flag_scores[flag] + min(0, round((MAX_TIME - elapsed_time), 2) / 20), 2)
 
-        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
-        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = %s', (team_name,))
+        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = ?', (team_name,))
         flags_submitted = cursor.fetchone()[0].split(',')
 
         if flag in flags_submitted:
@@ -122,11 +126,11 @@ def submit():
 
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
             flags_submitted.append(flag)
-            cursor.execute('UPDATE teams SET score = score + %s, flags_submitted = %s WHERE team_name = %s',
+            cursor.execute('UPDATE teams SET score = score + ?, flags_submitted = ? WHERE team_name = ?',
                            (round(points, 2), ','.join(flags_submitted), team_name))
             conn.commit()
             conn.close()
-            session['start_time'] = time.time()  # Reset the timer
+            session['start_time'] = time.time()  # Reset the timer FIXME
             return render_template_string(SUBMIT_TEMPLATE, success=True, points=round(points, 2))
         else:
             return render_template_string(SUBMIT_TEMPLATE, error="Invalid flag.")
@@ -136,7 +140,7 @@ def submit():
 # Leaderboard page
 @app.route('/leaderboard')
 def leaderboard():
-    conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+    conn = sqlite3.connect('users.db')
     cursor = conn.cursor()
     cursor.execute('SELECT team_name, score FROM teams ORDER BY score DESC')
     teams = cursor.fetchall()
@@ -170,7 +174,7 @@ def weblogin():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        conn = psycopg2.connect(os.getenv('DATABASE_URL'))
+        conn = sqlite3.connect('users.db')
         cursor = conn.cursor()
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
         cursor.execute(query)
@@ -188,8 +192,8 @@ def weblogin():
 
 
 # Challenge 3: Reverse Engineering
-@app.route('/reverse-engineering', methods=['GET', 'POST'])
-def reverse_engineering():
+@app.route('/binary', methods=['GET', 'POST'])
+def binary():
     description = "Analyze a binary file to find a hardcoded key (Format KEY{xxxx}). First you must find the correct BIN file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
@@ -281,7 +285,7 @@ with open("src/html/competition.html", "r") as f:
 with open("src/html/signin.html", "r") as f:
     SIGNIN_TEMPLATE = f.read()
 
-with open("src/html/submit.html", "r") as f:
+with open("src/html/submit.html", "r", encoding="UTF-8") as f:
     SUBMIT_TEMPLATE = f.read()
 
 with open("src/html/leaderboard.html", "r") as f:
@@ -290,4 +294,8 @@ with open("src/html/leaderboard.html", "r") as f:
 # Run the app
 if __name__ == "__main__":
     init_db()
-    app.run(debug=True)
+    from waitress import serve
+
+    serve(app, host='0.0.0.0', port=5000)
+
+# TODO Add better error handling, and prints

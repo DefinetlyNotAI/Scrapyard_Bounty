@@ -34,7 +34,7 @@ password field to exploit this.
 
 Fill the form as follows:
 
-- **Username:** `admin`
+- **Username:** `' OR '1'='1`
 - **Password:** `' OR '1'='1`
 
 ---
