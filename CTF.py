@@ -83,6 +83,7 @@ def download_file(filename):
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if 'username' not in session or session['username'] != 'ADMIN':
+        print(session['username'])
         return redirect(url_for('admin_signin'))
 
     if request.method == 'POST':
@@ -115,17 +116,6 @@ def admin():
             return render_template_string(ADMIN_TEMPLATE, message="Database modified successfully.")
 
     return render_template_string(ADMIN_TEMPLATE)
-
-
-# Sign-in route for setting the username in session
-@app.route('/admin_signin', methods=['GET', 'POST'])
-def admin_signin():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        session['username'] = username
-        return redirect(url_for('admin'))
-    return render_template_string(SIGNIN_TEMPLATE)
-
 
 # Sign-in page
 @app.route('/signin', methods=['GET', 'POST'])
