@@ -106,6 +106,10 @@ def admin():
         elif action == 'modify':
             team_id = request.form.get('team_id')
             new_score = request.form.get('new_score')
+            if not team_id or not new_score:
+                cursor.close()
+                conn.close()
+                return render_template_string(ADMIN_TEMPLATE, message="Team ID and new score are required.")
             cursor.execute('UPDATE teams SET score = %s WHERE id = %s', (new_score, team_id))
             conn.commit()
             cursor.close()
