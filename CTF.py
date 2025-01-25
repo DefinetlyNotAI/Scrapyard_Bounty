@@ -5,6 +5,7 @@ import time
 import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
 from scapy.all import rdpcap
+from waitress import serve
 
 # Flask app instance
 app = Flask(__name__)
@@ -33,48 +34,38 @@ MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 # Database connection
 def get_db_connection():
-    dbname = os.getenv('POSTGRES_DATABASE')
-    user = os.getenv('POSTGRES_USER')
-    password = os.getenv('POSTGRES_PASSWORD')
-    host = os.getenv('PGHOST')
-
-    if not all([dbname, user, password, host]):
-        raise ValueError("One or more database environment variables are not set")
-
-    conn = psycopg2.connect(
-        dbname=dbname,
-        user=user,
-        password=password,
-        host=host
-    )
+    conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"))
     return conn
 
 
 # Initialize PostgreSQL database
 def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS teams (
-            id SERIAL PRIMARY KEY,
-            team_name TEXT NOT NULL,
-            score REAL DEFAULT 0,
-            ip_address TEXT,
-            flags_submitted TEXT
-        )
-    ''')
-    cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT DO NOTHING',
-                   ('admin', 'password123'))
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT NOT NULL,
+                password TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS teams (
+                id SERIAL PRIMARY KEY,
+                team_name TEXT NOT NULL,
+                score REAL DEFAULT 0,
+                ip_address TEXT,
+                flags_submitted TEXT
+            )
+        ''')
+        cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT DO NOTHING',
+                       ('admin', 'password123'))
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        raise f"Error initializing database: {e}"
 
 
 # Sign-in page
@@ -307,8 +298,6 @@ with open("src/html/leaderboard.html", "r") as f:
 # Run the app
 if __name__ == "__main__":
     init_db()
-    from waitress import serve
-
     serve(app, host='0.0.0.0', port=5000)
 
 # TODO Add better error handling, and prints
