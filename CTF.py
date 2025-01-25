@@ -6,7 +6,6 @@ import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, make_response, send_from_directory
 from scapy.all import rdpcap
 from waitress import serve
-from werkzeug.security import generate_password_hash, check_password_hash
 
 # Flask app instance
 app = Flask(__name__)
@@ -123,33 +122,17 @@ def admin_signin():
 def signin():
     if request.method == 'POST':
         team_name = request.form.get('team_name')
-        password = request.form.get('password')
-        if not team_name or not password:
-            return render_template_string(SIGNIN_TEMPLATE, error="Team name and password are required.")
+        if not team_name:
+            return render_template_string(SIGNIN_TEMPLATE, error="Team name is required.")
+
+        # FIXME If username already exists output an error saying unauthorized
+        session['team_name'] = team_name
+        ip_address = request.remote_addr
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT password, ip_address FROM teams WHERE team_name = %s', (team_name,))
-        result = cursor.fetchone()
-
-        if result:
-            stored_password, stored_ip = result
-            if check_password_hash(stored_password, password):
-                if stored_ip and stored_ip != request.remote_addr:
-                    return render_template_string(SIGNIN_TEMPLATE,
-                                                  error="Account is already in use from another device.")
-                session['team_name'] = team_name
-                cursor.execute('UPDATE teams SET ip_address = %s WHERE team_name = %s',
-                               (request.remote_addr, team_name))
-            else:
-                return render_template_string(SIGNIN_TEMPLATE, error="Invalid password.")
-        else:
-            hashed_password = generate_password_hash(password)
-            cursor.execute(
-                'INSERT INTO teams (team_name, password, ip_address, flags_submitted) VALUES (%s, %s, %s, %s)',
-                (team_name, hashed_password, request.remote_addr, ''))
-            session['team_name'] = team_name
-
+        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
+                       (team_name, ip_address, ''))
         conn.commit()
         cursor.close()
         conn.close()
