@@ -31,7 +31,7 @@ FLAG_5_SCORE = 100
 
 # Database connection
 def get_db_connection():
-    conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"))
+    conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"), dbname=os.getenv("DB_NAME"))
     return conn
 
 
