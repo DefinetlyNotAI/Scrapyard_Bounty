@@ -82,10 +82,6 @@ def download_file(filename):
 # Admin route to view, delete, and modify the database
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    if 'username' not in request.cookies or request.cookies.get('team_name') != 'ADMIN':
-        print(request.cookies.get('team_name'))
-        return redirect(url_for('signin'))
-
     if request.method == 'POST':
         action = request.form.get('action')
         conn = get_db_connection()
