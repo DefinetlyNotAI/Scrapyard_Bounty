@@ -51,13 +51,14 @@ def init_db():
             CREATE TABLE IF NOT EXISTS teams (
                 id SERIAL PRIMARY KEY,
                 team_name TEXT NOT NULL,
+                password TEXT NOT NULL,
                 score REAL DEFAULT 0,
                 ip_address TEXT,
                 flags_submitted TEXT
             )
         ''')
         cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT DO NOTHING',
-                       ('admin', 'password123'))
+                       ('admin', 'password123'))  # For the SQL INJECTION challenge
         conn.commit()
         cursor.close()
         conn.close()
