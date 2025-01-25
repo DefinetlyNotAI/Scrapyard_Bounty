@@ -86,3 +86,4 @@ $RECYCLE.BIN/
 *.lnk
 /users.db
 /secret.txt
+*.env
