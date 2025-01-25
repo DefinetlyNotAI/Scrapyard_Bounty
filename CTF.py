@@ -1,8 +1,8 @@
 import os
-import sqlite3
 import tempfile
 import time
 
+import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
 from scapy.all import rdpcap
 
@@ -31,32 +31,51 @@ FLAG_5_SCORE = 100
 MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 
-# Initialize SQLite database
-# TODO Make this use a sqlite server hoster
+# Database connection
+def get_db_connection():
+    dbname = os.getenv('DB_NAME')
+    user = os.getenv('POSTGRES_USER')
+    password = os.getenv('DB_PASSWORD')
+    host = os.getenv('PGHOST')
+    port = os.getenv('DB_PORT')
+
+    if not all([dbname, user, password, host, port]):
+        raise ValueError("One or more database environment variables are not set")
+
+    conn = psycopg2.connect(
+        dbname=dbname,
+        user=user,
+        password=password,
+        host=host,
+        port=port
+    )
+    return conn
+
+
+# Initialize PostgreSQL database
 def init_db():
-    if os.path.exists('users.db'):
-        return
-    conn = sqlite3.connect('users.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             password TEXT NOT NULL
         )
     ''')
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS teams (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             team_name TEXT NOT NULL,
             score REAL DEFAULT 0,
             ip_address TEXT,
             flags_submitted TEXT
         )
     ''')
-    cursor.execute('INSERT OR IGNORE INTO users (username, password) VALUES (?, ?)',
+    cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT DO NOTHING',
                    ('admin', 'password123'))
     conn.commit()
+    cursor.close()
     conn.close()
 
 
@@ -72,25 +91,18 @@ def signin():
         session['team_name'] = team_name
         ip_address = request.remote_addr
 
-        conn = sqlite3.connect('users.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (?, ?, ?)',
+        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
                        (team_name, ip_address, ''))
         conn.commit()
+        cursor.close()
         conn.close()
 
         resp = make_response(redirect(url_for('home')))
         resp.set_cookie('team_name', team_name)
         return resp
     return render_template_string(SIGNIN_TEMPLATE)
-
-
-# Favicon
-# FIXME
-"""@app.route('/favicon.ico', methods=['GET'])
-def fav():
-    return open("favicon.ico")
-"""
 
 
 # Submit page
@@ -116,9 +128,9 @@ def submit():
             }
             points = round(flag_scores[flag] + min(0, round((MAX_TIME - elapsed_time), 2) / 20), 2)
 
-        conn = sqlite3.connect('users.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = ?', (team_name,))
+        cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = %s', (team_name,))
         flags_submitted = cursor.fetchone()[0].split(',')
 
         if flag in flags_submitted:
@@ -126,9 +138,10 @@ def submit():
 
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
             flags_submitted.append(flag)
-            cursor.execute('UPDATE teams SET score = score + ?, flags_submitted = ? WHERE team_name = ?',
+            cursor.execute('UPDATE teams SET score = score + %s, flags_submitted = %s WHERE team_name = %s',
                            (round(points, 2), ','.join(flags_submitted), team_name))
             conn.commit()
+            cursor.close()
             conn.close()
             session['start_time'] = time.time()  # Reset the timer FIXME
             return render_template_string(SUBMIT_TEMPLATE, success=True, points=round(points, 2))
@@ -140,10 +153,11 @@ def submit():
 # Leaderboard page
 @app.route('/leaderboard')
 def leaderboard():
-    conn = sqlite3.connect('users.db')
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT team_name, score FROM teams ORDER BY score DESC')
     teams = cursor.fetchall()
+    cursor.close()
     conn.close()
     return render_template_string(LEADERBOARD_TEMPLATE, teams=teams)
 
@@ -174,11 +188,12 @@ def weblogin():
         username = request.form.get('username', '')
         password = request.form.get('password', '')
 
-        conn = sqlite3.connect('users.db')
+        conn = get_db_connection()
         cursor = conn.cursor()
         query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
         cursor.execute(query)
         user = cursor.fetchone()
+        cursor.close()
         conn.close()
 
         if user:
