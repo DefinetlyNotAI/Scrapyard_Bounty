@@ -40,8 +40,6 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS users")
-        cursor.execute("DROP TABLE IF EXISTS teams")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
