@@ -33,21 +33,19 @@ MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 # Database connection
 def get_db_connection():
-    dbname = os.getenv('DB_NAME')
+    dbname = os.getenv('POSTGRES_DATABASE')
     user = os.getenv('POSTGRES_USER')
-    password = os.getenv('DB_PASSWORD')
+    password = os.getenv('POSTGRES_PASSWORD')
     host = os.getenv('PGHOST')
-    port = os.getenv('DB_PORT')
 
-    if not all([dbname, user, password, host, port]):
+    if not all([dbname, user, password, host]):
         raise ValueError("One or more database environment variables are not set")
 
     conn = psycopg2.connect(
         dbname=dbname,
         user=user,
         password=password,
-        host=host,
-        port=port
+        host=host
     )
     return conn
 
