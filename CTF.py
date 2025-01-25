@@ -3,9 +3,10 @@ import tempfile
 import time
 
 import psycopg2
-from flask import Flask, request, render_template_string, session, redirect, url_for, make_response
+from flask import Flask, request, render_template_string, session, redirect, url_for, make_response, send_from_directory
 from scapy.all import rdpcap
 from waitress import serve
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Flask app instance
 app = Flask(__name__)
@@ -16,20 +17,16 @@ if app.config['SECRET_KEY'] == "None":
     print("WARNING: SECRET_KEY is not set. Please set it to a random value: Defaulting with 'None'.")
 
 # Flags and awards
-# TODO Set to a env file, and change the keys themselves
-FLAG_1 = "CTF{ROT-13-FLAG}"
+FLAG_1 = os.getenv("FLAG_1")
 FLAG_1_SCORE = 50
-FLAG_2 = "CTF{SQLI_FLAG}"
+FLAG_2 = os.getenv("FLAG_2")
 FLAG_2_SCORE = 75
-FLAG_3 = "CTF{REVERSE_ME}"
+FLAG_3 = os.getenv("FLAG_3")
 FLAG_3_SCORE = 125
-FLAG_4 = "CTF{PCAP_FLAG}"
+FLAG_4 = os.getenv("FLAG_4")
 FLAG_4_SCORE = 150
-FLAG_5 = "CTF{STEGANOGRAPHY_FLAG}"
+FLAG_5 = os.getenv("FLAG_5")
 FLAG_5_SCORE = 100
-
-# Time awards
-MAX_TIME = 2000  # Around 33 min and 20 seconds - Max 100 points bonus
 
 
 # Database connection
@@ -38,7 +35,7 @@ def get_db_connection():
     return conn
 
 
-# Initialize PostgreSQL database
+# Initialize PostgresSQL database
 def init_db():
     try:
         conn = get_db_connection()
@@ -68,22 +65,91 @@ def init_db():
         raise f"Error initializing database: {e}"
 
 
+# Route to download zip files
+@app.route('/src/assets/<filename>')
+def download_file(filename):
+    return send_from_directory('src/assets', filename, as_attachment=True)
+
+
+# Admin route to view, delete, and modify the database
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if 'username' not in session or session['username'] != 'ADMIN':
+        return redirect(url_for('admin_signin'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        if action == 'view':
+            cursor.execute('SELECT * FROM teams')
+            teams = cursor.fetchall()
+            cursor.close()
+            conn.close()
+            return render_template_string(ADMIN_TEMPLATE, teams=teams)
+
+        elif action == 'delete':
+            cursor.execute('DELETE FROM teams')
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return render_template_string(ADMIN_TEMPLATE, message="Database deleted successfully.")
+
+        elif action == 'modify':
+            team_id = request.form.get('team_id')
+            new_score = request.form.get('new_score')
+            cursor.execute('UPDATE teams SET score = ? WHERE id = ?', (new_score, team_id))
+            conn.commit()
+            cursor.close()
+            conn.close()
+            return render_template_string(ADMIN_TEMPLATE, message="Database modified successfully.")
+
+    return render_template_string(ADMIN_TEMPLATE)
+
+
+# Sign-in route for setting the username in session
+@app.route('/admin_signin', methods=['GET', 'POST'])
+def admin_signin():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        session['username'] = username
+        return redirect(url_for('admin'))
+    return render_template_string(SIGNIN_TEMPLATE)
+
+
 # Sign-in page
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
     if request.method == 'POST':
         team_name = request.form.get('team_name')
-        if not team_name:
-            return render_template_string(SIGNIN_TEMPLATE, error="Team name is required.")
-
-        # FIXME If username already exists output an error saying unauthorized
-        session['team_name'] = team_name
-        ip_address = request.remote_addr
+        password = request.form.get('password')
+        if not team_name or not password:
+            return render_template_string(SIGNIN_TEMPLATE, error="Team name and password are required.")
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
-                       (team_name, ip_address, ''))
+        cursor.execute('SELECT password, ip_address FROM teams WHERE team_name = %s', (team_name,))
+        result = cursor.fetchone()
+
+        if result:
+            stored_password, stored_ip = result
+            if check_password_hash(stored_password, password):
+                if stored_ip and stored_ip != request.remote_addr:
+                    return render_template_string(SIGNIN_TEMPLATE,
+                                                  error="Account is already in use from another device.")
+                session['team_name'] = team_name
+                cursor.execute('UPDATE teams SET ip_address = %s WHERE team_name = %s',
+                               (request.remote_addr, team_name))
+            else:
+                return render_template_string(SIGNIN_TEMPLATE, error="Invalid password.")
+        else:
+            hashed_password = generate_password_hash(password)
+            cursor.execute(
+                'INSERT INTO teams (team_name, password, ip_address, flags_submitted) VALUES (%s, %s, %s, %s)',
+                (team_name, hashed_password, request.remote_addr, ''))
+            session['team_name'] = team_name
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -104,9 +170,6 @@ def submit():
         if not team_name:
             return redirect(url_for('signin'))
 
-        start_time = session.get('start_time', time.time())
-        end_time = time.time()
-        elapsed_time = end_time - start_time
         if flag in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5]:
             flag_scores = {
                 FLAG_1: FLAG_1_SCORE,
@@ -115,7 +178,7 @@ def submit():
                 FLAG_4: FLAG_4_SCORE,
                 FLAG_5: FLAG_5_SCORE
             }
-            points = round(flag_scores[flag] + min(0, round((MAX_TIME - elapsed_time), 2) / 20), 2)
+            points = round(flag_scores[flag], 2)
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -132,7 +195,6 @@ def submit():
             conn.commit()
             cursor.close()
             conn.close()
-            session['start_time'] = time.time()  # Reset the timer FIXME
             return render_template_string(SUBMIT_TEMPLATE, success=True, points=round(points, 2))
         else:
             return render_template_string(SUBMIT_TEMPLATE, error="Invalid flag.")
@@ -301,3 +363,61 @@ if __name__ == "__main__":
     serve(app, host='0.0.0.0', port=5000)
 
 # TODO Add better error handling, and prints
+
+
+# HTML template for admin page
+ADMIN_TEMPLATE = '''
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Page</title>
+</head>
+<body>
+    <h1>Admin Page</h1>
+    <form method="post">
+        <button name="action" value="view">View Database</button>
+        <button name="action" value="delete">Delete Database</button>
+        <br><br>
+        <label for="team_id">Team ID:</label>
+        <input type="text" id="team_id" name="team_id">
+        <label for="new_score">New Score:</label>
+        <input type="text" id="new_score" name="new_score">
+        <button name="action" value="modify">Modify Database</button>
+    </form>
+    {% if teams %}
+    {% endif %}
+    {% if message %}
+    {% endif %}
+        <p>{{ message }}</p>
+        <h2>Teams</h2>
+        <ul>
+        {% for team in teams %}
+        {% endfor %}
+            <li>{{ team['id'] }}: {{ team['team_name'] }} - {{ team['score'] }}</li>
+        </ul>
+</body>
+</html>
+'''
+
+# HTML template for sign-in page
+SIGNIN_TEMPLATE = '''
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign In</title>
+</head>
+<body>
+    <h1>Sign In</h1>
+    <form method="post">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username">
+        <button type="submit">Sign In</button>
+    </form>
+</body>
+</html>
+'''
+
+if __name__ == "__main__":
+    app.run(debug=True)

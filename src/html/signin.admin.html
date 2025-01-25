@@ -171,17 +171,17 @@
     <form id="signin-form" method="post">
         <div class="input-group">
             <input id="team_name" name="team_name" placeholder=" " required type="text">
-            <label for="team_name">Team Name</label>
+            <label for="team_name">Admin Username</label>
         </div>
         <div class="input-group">
             <input id="password" name="password" placeholder=" " required type="password">
-            <label for="password">Password</label>
+            <label for="password">Admin Password</label>
         </div>
         <button type="submit">
             Sign In
-            <br>
+
         </button>
-        <div class="error" id="error-message">Please enter your team name and password.</div>
+        <div class="error" id="error-message">Please enter your username and password.</div>
     </form>
 </div>
 
@@ -191,7 +191,6 @@
     const passwordInput = document.getElementById('password');
     const errorMessage = document.getElementById('error-message');
 
-    // Add input validation on typing
     teamNameInput.addEventListener('input', function () {
         if (this.value.trim() !== '') {
             errorMessage.classList.remove('visible');
@@ -204,7 +203,6 @@
         }
     });
 
-    // Add focus effect
     teamNameInput.addEventListener('focus', function () {
         this.parentElement.style.transform = 'scale(1.02)';
     });
@@ -221,14 +219,12 @@
         this.parentElement.style.transform = 'scale(1)';
     });
 
-    // Form submission handling
     form.addEventListener('submit', function (event) {
         if (teamNameInput.value.trim() === '' || passwordInput.value.trim() === '') {
             event.preventDefault();
             errorMessage.classList.add('visible');
             teamNameInput.focus();
 
-            // Add shake animation to input
             teamNameInput.style.animation = 'shake 0.5s';
             setTimeout(() => {
                 teamNameInput.style.animation = '';
@@ -238,15 +234,14 @@
         }
     });
 
-    // Add shake animation
     const style = document.createElement('style');
     style.textContent = `
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-10px); }
-            75% { transform: translateX(10px); }
-        }
-    `;
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-10px); }
+                    75% { transform: translateX(10px); }
+                }
+            `;
     document.head.appendChild(style);
 </script>
 </body>
