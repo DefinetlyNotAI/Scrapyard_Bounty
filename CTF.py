@@ -113,6 +113,7 @@ def admin():
 
     return render_template_string(ADMIN_TEMPLATE)
 
+
 # Sign-in page
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
@@ -352,7 +353,8 @@ with open("src/html/submit.html", "r", encoding="UTF-8") as f:
 with open("src/html/leaderboard.html", "r") as f:
     LEADERBOARD_TEMPLATE = f.read()
 
-with open("src/html/leaderboard.html", "r") as f:
+# HTML template for admin page
+with open("src/html/admin.html", "r") as f:
     ADMIN_TEMPLATE = f.read()
 
 # Run the app
