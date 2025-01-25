@@ -82,13 +82,14 @@ def download_file(filename):
 # Admin route to view, delete, and modify the database
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
     if request.method == 'POST':
         action = request.form.get('action')
-        conn = get_db_connection()
-        cursor = conn.cursor()
 
         if action == 'view':
-            cursor.execute('SELECT * FROM teams')
+            cursor.execute('SELECT id, team_name, score FROM teams')
             teams = cursor.fetchall()
             cursor.close()
             conn.close()
@@ -105,13 +106,18 @@ def admin():
         elif action == 'modify':
             team_id = request.form.get('team_id')
             new_score = request.form.get('new_score')
-            cursor.execute('UPDATE teams SET score = ? WHERE id = ?', (new_score, team_id))
+            cursor.execute('UPDATE teams SET score = %s WHERE id = %s', (new_score, team_id))
             conn.commit()
             cursor.close()
             conn.close()
             return render_template_string(ADMIN_TEMPLATE, message="Database modified successfully.")
 
-    return render_template_string(ADMIN_TEMPLATE)
+    cursor.execute('SELECT id, team_name, score FROM teams')
+    teams = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return render_template_string(ADMIN_TEMPLATE, teams=teams)
 
 
 # Sign-in page
