@@ -6,6 +6,7 @@ import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, make_response, send_from_directory
 from scapy.all import rdpcap
 from waitress import serve
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # Flask app instance
 app = Flask(__name__)
@@ -122,17 +123,33 @@ def admin_signin():
 def signin():
     if request.method == 'POST':
         team_name = request.form.get('team_name')
-        if not team_name:
-            return render_template_string(SIGNIN_TEMPLATE, error="Team name is required.")
-
-        # FIXME If username already exists output an error saying unauthorized
-        session['team_name'] = team_name
-        ip_address = request.remote_addr
+        password = request.form.get('password')
+        if not team_name or not password:
+            return render_template_string(SIGNIN_TEMPLATE, error="Team name and password are required.")
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute('INSERT INTO teams (team_name, ip_address, flags_submitted) VALUES (%s, %s, %s)',
-                       (team_name, ip_address, ''))
+        cursor.execute('SELECT password, ip_address FROM teams WHERE team_name = %s', (team_name,))
+        result = cursor.fetchone()
+
+        if result:
+            stored_password, stored_ip = result
+            if check_password_hash(stored_password, password):
+                if stored_ip and stored_ip != request.remote_addr:
+                    return render_template_string(SIGNIN_TEMPLATE,
+                                                  error="Account is already in use from another device.")
+                session['team_name'] = team_name
+                cursor.execute('UPDATE teams SET ip_address = %s WHERE team_name = %s',
+                               (request.remote_addr, team_name))
+            else:
+                return render_template_string(SIGNIN_TEMPLATE, error="Invalid password.")
+        else:
+            hashed_password = generate_password_hash(password)
+            cursor.execute(
+                'INSERT INTO teams (team_name, password, ip_address, flags_submitted) VALUES (%s, %s, %s, %s)',
+                (team_name, hashed_password, request.remote_addr, ''))
+            session['team_name'] = team_name
+
         conn.commit()
         cursor.close()
         conn.close()
@@ -340,67 +357,10 @@ with open("src/html/submit.html", "r", encoding="UTF-8") as f:
 with open("src/html/leaderboard.html", "r") as f:
     LEADERBOARD_TEMPLATE = f.read()
 
+with open("src/html/leaderboard.html", "r") as f:
+    ADMIN_TEMPLATE = f.read()
+
 # Run the app
 if __name__ == "__main__":
     init_db()
     serve(app, host='0.0.0.0', port=5000)
-
-# TODO Add better error handling, and prints
-
-
-# HTML template for admin page
-ADMIN_TEMPLATE = '''
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Admin Page</title>
-</head>
-<body>
-    <h1>Admin Page</h1>
-    <form method="post">
-        <button name="action" value="view">View Database</button>
-        <button name="action" value="delete">Delete Database</button>
-        <br><br>
-        <label for="team_id">Team ID:</label>
-        <input type="text" id="team_id" name="team_id">
-        <label for="new_score">New Score:</label>
-        <input type="text" id="new_score" name="new_score">
-        <button name="action" value="modify">Modify Database</button>
-    </form>
-    {% if teams %}
-    {% endif %}
-    {% if message %}
-    {% endif %}
-        <p>{{ message }}</p>
-        <h2>Teams</h2>
-        <ul>
-        {% for team in teams %}
-        {% endfor %}
-            <li>{{ team['id'] }}: {{ team['team_name'] }} - {{ team['score'] }}</li>
-        </ul>
-</body>
-</html>
-'''
-
-# HTML template for sign-in page
-SIGNIN_TEMPLATE = '''
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Sign In</title>
-</head>
-<body>
-    <h1>Sign In</h1>
-    <form method="post">
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username">
-        <button type="submit">Sign In</button>
-    </form>
-</body>
-</html>
-'''
-
-if __name__ == "__main__":
-    app.run(debug=True)
