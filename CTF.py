@@ -40,6 +40,8 @@ def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute("DROP TABLE IF EXISTS users")
+        cursor.execute("DROP TABLE IF EXISTS teams")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -91,7 +93,8 @@ def admin():
             return render_template_string(ADMIN_TEMPLATE, teams=teams)
 
         elif action == 'delete':
-            cursor.execute('DELETE FROM teams')
+            cursor.execute("DROP TABLE IF EXISTS users")
+            cursor.execute("DROP TABLE IF EXISTS teams")
             conn.commit()
             cursor.close()
             conn.close()
