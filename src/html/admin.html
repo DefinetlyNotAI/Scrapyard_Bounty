@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Page</title>
+</head>
+<body>
+<h1>Admin Page</h1>
+<form method="post">
+    <button name="action" value="view">View Database</button>
+    <button name="action" value="delete">Delete Database</button>
+    <br><br>
+    <label for="team_id">Team ID:</label>
+    <input id="team_id" name="team_id" type="text">
+    <label for="new_score">New Score:</label>
+    <input id="new_score" name="new_score" type="text">
+    <button name="action" value="modify">Modify Database</button>
+</form>
+{% if teams %}
+{% endif %}
+{% if message %}
+{% endif %}
+<p>{{ message }}</p>
+<h2>Teams</h2>
+<ul>
+    {% for team in teams %}
+    {% endfor %}
+    <li>{{ team['id'] }}: {{ team['team_name'] }} - {{ team['score'] }}</li>
+</ul>
+</body>
+</html>
