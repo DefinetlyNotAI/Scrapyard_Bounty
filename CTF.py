@@ -36,10 +36,16 @@ def get_db_connection():
 
 
 # Initialize PostgresSQL database
-def init_db():
+"""def init_db():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # Drop existing tables
+        cursor.execute('DROP TABLE IF EXISTS users')
+        cursor.execute('DROP TABLE IF EXISTS teams')
+
+        # Create new tables
         cursor.execute('''
             CREATE TABLE users (
                 id SERIAL PRIMARY KEY,
@@ -62,8 +68,9 @@ def init_db():
         conn.commit()
         cursor.close()
         conn.close()
+        print("Database initialized successfully.")
     except Exception as e:
-        raise f"Error initializing database: {e}"
+        raise e"""
 
 
 # Route to download zip files
@@ -364,5 +371,5 @@ with open("src/html/leaderboard.html", "r") as f:
 
 # Run the app
 if __name__ == "__main__":
-    init_db()
+    # init_db()
     serve(app, host='0.0.0.0', port=5000)
