@@ -7,6 +7,23 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link href="{{ url_for('static', filename='favicon.ico') }}" rel="icon" type="image/x-icon">
     <style>
+    label {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        transition: all 0.3s ease;
+        pointer-events: none;
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    input:focus + label,
+    input:not(:placeholder-shown) + label {
+        opacity: 0;
+        visibility: hidden;
+    }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -75,17 +92,6 @@
             width: 100%;
         }
 
-        label {
-            position: absolute;
-            left: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-            transition: all 0.3s ease;
-            pointer-events: none;
-            font-size: 1rem;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
         input {
             width: 100%;
             padding: 15px;
@@ -101,13 +107,6 @@
             outline: none;
             border-color: rgba(255, 255, 255, 0.5);
             background: rgba(255, 255, 255, 0.15);
-        }
-
-        input:focus + label,
-        input:not(:placeholder-shown) + label {
-            top: 0;
-            transform: translateY(-150%) scale(0.9);
-            color: white;
         }
 
         button {
@@ -182,7 +181,11 @@
             Sign In
             <br>
         </button>
-        <div class="error" id="error-message">Please enter your team name and password.</div>
+        {% if error %}
+        <div class="error visible" id="error-message">{{ error }}</div>
+        {% else %}
+        <div class="error" id="default-error-message">Please enter your team name and password.</div>
+        {% endif %}
     </form>
 </div>
 
@@ -190,7 +193,7 @@
     const form = document.getElementById('signin-form');
     const teamNameInput = document.getElementById('team_name');
     const passwordInput = document.getElementById('password');
-    const errorMessage = document.getElementById('error-message');
+    const errorMessage = document.getElementById('error-message') || document.getElementById('default-error-message');
 
     // Add input validation on typing
     teamNameInput.addEventListener('input', function () {
@@ -226,6 +229,7 @@
     form.addEventListener('submit', function (event) {
         if (teamNameInput.value.trim() === '' || passwordInput.value.trim() === '') {
             event.preventDefault();
+            errorMessage.textContent = "Please enter your team name and password.";
             errorMessage.classList.add('visible');
             teamNameInput.focus();
 

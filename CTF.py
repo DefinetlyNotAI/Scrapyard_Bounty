@@ -3,18 +3,23 @@ import tempfile
 import time
 
 import psycopg2
-from flask import Flask, request, render_template_string, session, redirect, url_for, make_response, send_from_directory
+from flask import Flask, request, render_template_string, session, redirect, url_for, jsonify, make_response
+from flask import send_from_directory
+from psycopg2._psycopg import AsIs
 from scapy.all import rdpcap
 from waitress import serve
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+
+
+# ------------------------ FLASK APP ------------------------- #
 
 # Flask app instance
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', "None")
-if app.config['SECRET_KEY'] == "None":
-    print("WARNING: SECRET_KEY is not set. Please set it to a random value: Defaulting with 'None'.")
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# ------------------ ENVIRONMENT VARIABLES -------------------- #
 
 # Flags and awards
 FLAG_1 = os.getenv("FLAG_1")
@@ -29,49 +34,201 @@ FLAG_5 = os.getenv("FLAG_5")
 FLAG_5_SCORE = 100
 
 
+# ------------------------- DATABASE ------------------------- #
+
 # Database connection
 def get_db_connection():
     conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"), dbname=os.getenv("DB_NAME"))
     return conn
 
 
-# Initialize PostgresSQL database
-"""def init_db():
+# Decorator to check if the user is an admin
+def admin_required(param):
+    def wrap(*args, **kwargs):
+        if 'team_name' not in session or session['team_name'] != 'ADMIN':
+            return redirect(url_for('signin'))
+        return param(*args, **kwargs)
+
+    wrap.__name__ = param.__name__
+    return wrap
+
+
+# --------------------------- APIs ---------------------------- #
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.close()
+        conn.close()
+        return jsonify({"status": True})
+    except Exception:
+        return jsonify({"status": False})
 
-        # Drop existing tables
-        cursor.execute('DROP TABLE IF EXISTS users')
-        cursor.execute('DROP TABLE IF EXISTS teams')
 
-        # Create new tables
-        cursor.execute('''
-            CREATE TABLE users (
-                id SERIAL PRIMARY KEY,
-                username TEXT NOT NULL,
-                password TEXT NOT NULL
-            )
-        ''')
-        cursor.execute('''
-            CREATE TABLE teams (
-                id SERIAL PRIMARY KEY,
-                team_name TEXT NOT NULL,
-                password TEXT NOT NULL,
-                score REAL DEFAULT 0,
-                ip_address TEXT,
-                flags_submitted TEXT
-            )
-        ''')
-        cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s) ON CONFLICT DO NOTHING',
-                       ('admin', 'password123'))  # For the SQL INJECTION challenge
+@app.route('/api/dbsize', methods=['GET'])
+@admin_required
+def get_db_size():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database())) AS size")
+    size = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    return jsonify({"size": size})
+
+
+# noinspection SqlResolve
+@app.route('/api/tables', methods=['GET'])
+@admin_required
+def get_tables():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT table_name
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        AND table_name NOT LIKE 'pg_%'
+        AND table_name NOT LIKE 'sql_%'
+    """)
+    tables = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify([table[0] for table in tables])
+
+
+@app.route('/api/tables/<table_name>', methods=['GET'])
+@admin_required
+def get_table_rows(table_name):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM %s LIMIT 100", (AsIs(table_name),))  # Use parameterized query
+    rows = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(rows)
+
+
+# noinspection SqlResolve
+@app.route('/api/tables/<table_name>/schema', methods=['GET'])
+@admin_required
+def get_table_schema(table_name):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = %s
+    """, (table_name,))
+    schema = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(schema)
+
+
+@app.route('/api/query', methods=['POST'])
+@admin_required
+def execute_query():
+    query = request.json.get('query')
+    if not query:
+        return jsonify({"error": "No query provided"}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(query)
+        if query.strip().lower().startswith("select"):
+            results = cursor.fetchall()
+        else:
+            conn.commit()
+            results = {"message": "Query executed successfully"}
+        cursor.close()
+        conn.close()
+        return jsonify(results)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# API endpoint to view teams
+# noinspection SqlResolve
+@app.route('/api/teams', methods=['GET'])
+@admin_required
+def view_teams():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT id, team_name, score FROM teams')
+    teams = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return jsonify(teams)
+
+
+# API endpoint to delete the database
+@app.route('/api/delete', methods=['POST'])
+@admin_required
+def delete_database():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS users")
+    cursor.execute("DROP TABLE IF EXISTS teams")
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return jsonify({"message": "Database deleted successfully."})
+
+
+# noinspection SqlResolve
+@app.route('/api/activeConnections', methods=['GET'])
+@admin_required
+def get_active_connections():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND pid <> pg_backend_pid()")
+    active_connections = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    return jsonify({"activeConnections": active_connections})
+
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
+    return jsonify({"status": "API is running"}), 200
+
+
+@app.route('/api/tables/<table_name>/<int:row_id>', methods=['DELETE'])
+@admin_required
+def delete_table_item(table_name, row_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = f"DELETE FROM {table_name} WHERE id = %s"
+        cursor.execute(query, (row_id,))
         conn.commit()
         cursor.close()
         conn.close()
-        print("Database initialized successfully.")
+        return jsonify({"message": "Item deleted successfully."}), 200
     except Exception as e:
-        raise e"""
+        return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/tables/<table_name>', methods=['DELETE'])
+@admin_required
+def delete_table(table_name):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = f"DROP TABLE IF EXISTS {table_name}"
+        cursor.execute(query)
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "Table deleted successfully."}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ----------------------- RESOURCES ----------------------- #
 
 # Route to download zip files
 @app.route('/src/assets/<filename>')
@@ -79,49 +236,23 @@ def download_file(filename):
     return send_from_directory('src/assets', filename, as_attachment=True)
 
 
-# Admin route to view, delete, and modify the database
-@app.route('/admin', methods=['GET', 'POST'])
+# ------------------------- PAGES ------------------------- #
+
+# Home Route
+@app.route('/')
+def home():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
+    if 'start_time' not in session:
+        session['start_time'] = time.time()
+    return render_template_string(HOME_TEMPLATE)
+
+
+# Admin route to render the admin page
+@app.route('/admin')
+@admin_required
 def admin():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    if request.method == 'POST':
-        action = request.form.get('action')
-
-        if action == 'view':
-            cursor.execute('SELECT id, team_name, score FROM teams')
-            teams = cursor.fetchall()
-            cursor.close()
-            conn.close()
-            return render_template_string(ADMIN_TEMPLATE, teams=teams)
-
-        elif action == 'delete':
-            cursor.execute("DROP TABLE IF EXISTS users")
-            cursor.execute("DROP TABLE IF EXISTS teams")
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return render_template_string(ADMIN_TEMPLATE, message="Database deleted successfully.")
-
-        elif action == 'modify':
-            team_id = request.form.get('team_id')
-            new_score = request.form.get('new_score')
-            if not team_id or not new_score:
-                cursor.close()
-                conn.close()
-                return render_template_string(ADMIN_TEMPLATE, message="Team ID and new score are required.")
-            cursor.execute('UPDATE teams SET score = %s WHERE id = %s', (new_score, team_id))
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return render_template_string(ADMIN_TEMPLATE, message="Database modified successfully.")
-
-    cursor.execute('SELECT id, team_name, score FROM teams')
-    teams = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    return render_template_string(ADMIN_TEMPLATE, teams=teams)
+    return render_template_string(ADMIN_TEMPLATE)
 
 
 # Sign-in page
@@ -217,6 +348,9 @@ def leaderboard():
     cursor.close()
     conn.close()
     return render_template_string(LEADERBOARD_TEMPLATE, teams=teams)
+
+
+# ----------------------- CHALLENGES ----------------------- #
 
 
 # Challenge 1: Cryptography
@@ -335,15 +469,7 @@ def steganography():
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
 
-# Home Route
-@app.route('/')
-def home():
-    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
-        return redirect(url_for('signin'))
-    if 'start_time' not in session:
-        session['start_time'] = time.time()
-    return render_template_string(HOME_TEMPLATE)
-
+# ------------------------- SETUP -------------------------- #
 
 # HTML template for home page
 with open("src/html/home.html", "r") as f:
