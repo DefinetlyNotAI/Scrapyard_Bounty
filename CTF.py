@@ -272,7 +272,7 @@ def signin():
         if result:
             stored_password, stored_ip = result
             if check_password_hash(stored_password, password):
-                if stored_ip and stored_ip != request.remote_addr:
+                if stored_ip and stored_ip != request.remote_addr and team_name != 'ADMIN':
                     return render_template_string(SIGNIN_TEMPLATE,
                                                   error="Account is already in use from another device.")
                 session['team_name'] = team_name
