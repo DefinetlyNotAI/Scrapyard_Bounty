@@ -59,6 +59,8 @@ This project is licensed under the MIT License.
 
 ---
 
+TODO Remake
+
 # API Documentation
 
 This document provides an overview of the available API endpoints for the project. Each endpoint includes information on the HTTP method, URL, required parameters, and whether admin access is required.
@@ -81,7 +83,7 @@ This document provides an overview of the available API endpoints for the projec
 - **URL:** `/api/dbsize`
 - **Method:** GET
 - **Description:** Retrieves the size of the database.
-- **Admin Required:** ✅
+- **Admin Required:** ❌
 - **Response:**
   ```json
   {

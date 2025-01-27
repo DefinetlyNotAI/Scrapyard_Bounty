@@ -1,6 +1,8 @@
 import os
 import tempfile
 import time
+from collections import defaultdict
+from functools import wraps
 
 import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, jsonify, make_response
@@ -9,7 +11,6 @@ from psycopg2._psycopg import AsIs
 from scapy.all import rdpcap
 from waitress import serve
 from werkzeug.security import check_password_hash, generate_password_hash
-
 
 # ------------------------ FLASK APP ------------------------- #
 
@@ -22,16 +23,25 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 # ------------------ ENVIRONMENT VARIABLES -------------------- #
 
 # Flags and awards
-FLAG_1 = os.getenv("FLAG_1")
+FLAG_1 = os.getenv("FLAG_1", "ERR")
 FLAG_1_SCORE = 50
-FLAG_2 = os.getenv("FLAG_2")
+FLAG_2 = os.getenv("FLAG_2", "ERR")
 FLAG_2_SCORE = 75
-FLAG_3 = os.getenv("FLAG_3")
+FLAG_3 = os.getenv("FLAG_3", "ERR")
 FLAG_3_SCORE = 125
-FLAG_4 = os.getenv("FLAG_4")
+FLAG_4 = os.getenv("FLAG_4", "ERR")
 FLAG_4_SCORE = 150
-FLAG_5 = os.getenv("FLAG_5")
+FLAG_5 = os.getenv("FLAG_5", "ERR")
 FLAG_5_SCORE = 100
+
+# Key variable
+KEY = os.getenv("KEY", "ERR")
+
+if "ERR" in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5, KEY]:
+    print("404: Env variable are not fully set, some are running on default - Continuing")
+
+# In-memory store for tracking requests
+request_store = defaultdict(list)
 
 
 # ------------------------- DATABASE ------------------------- #
@@ -53,6 +63,32 @@ def admin_required(param):
     return wrap
 
 
+# Decorator to rate limit the user - Advised not to use with @admin_required
+def rate_limit(limit, time_window=3600):
+    def decorator(func):
+        @wraps(func)  # Preserve the original function metadata
+        def wrapper(*args, **kwargs):
+            user_ip = request.remote_addr
+            current_time = time.time()
+
+            # Ensure user IP is in the request store
+            if user_ip not in request_store:
+                request_store[user_ip] = []
+
+            timestamps = request_store[user_ip]
+            valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
+            request_store[user_ip] = valid_timestamps
+
+            if len(valid_timestamps) >= limit:
+                return jsonify({"error": "Rate limit exceeded. Try again later."}), 429
+
+            request_store[user_ip].append(current_time)
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
+
+
 # --------------------------- APIs ---------------------------- #
 
 @app.route('/api/health', methods=['GET'])
@@ -69,7 +105,6 @@ def health_check():
 
 
 @app.route('/api/dbsize', methods=['GET'])
-@admin_required
 def get_db_size():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -80,7 +115,6 @@ def get_db_size():
     return jsonify({"size": size})
 
 
-# noinspection SqlResolve
 @app.route('/api/tables', methods=['GET'])
 @admin_required
 def get_tables():
@@ -151,7 +185,6 @@ def execute_query():
 
 
 # API endpoint to view teams
-# noinspection SqlResolve
 @app.route('/api/teams', methods=['GET'])
 @admin_required
 def view_teams():
@@ -178,7 +211,6 @@ def delete_database():
     return jsonify({"message": "Database deleted successfully."})
 
 
-# noinspection SqlResolve
 @app.route('/api/activeConnections', methods=['GET'])
 @admin_required
 def get_active_connections():
@@ -192,6 +224,7 @@ def get_active_connections():
 
 
 @app.route('/api/status', methods=['GET'])
+@rate_limit(limit=50, time_window=90)
 def api_status():
     return jsonify({"status": "API is running"}), 200
 
@@ -226,6 +259,189 @@ def delete_table(table_name):
         return jsonify({"message": "Table deleted successfully."}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/user/profile', methods=['GET'])
+@rate_limit(limit=100)
+def get_user_profile():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    # Fetch user profile data from the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT team_name, score, flags_submitted FROM teams WHERE team_name = %s', (team_name,))
+    result = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if result:
+        team_name, score, flags_submitted = result
+        return jsonify({
+            "team_name": team_name,
+            "score": score,
+            "flags_submitted": flags_submitted.split(',')
+        })
+    else:
+        return jsonify({"error": "User not found"}), 404
+
+
+@app.route('/api/challenges/progress', methods=['GET'])
+@rate_limit(limit=50)
+def get_challenge_progress():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    # Fetch challenge progress from the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT challenge_id, flag_submitted, score
+        FROM challenge_progress
+        WHERE team_name = %s
+    """, (team_name,))
+    progress = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    progress_data = [
+        {"challenge_id": challenge_id, "flag_submitted": flag_submitted, "score": score}
+        for challenge_id, flag_submitted, score in progress
+    ]
+
+    return jsonify(progress_data)
+
+
+@app.route('/api/team/rank', methods=['GET'])
+@rate_limit(limit=20)
+def get_team_rank():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    # Fetch the team's score and rank from the database
+    conn = get_db_connection()
+
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT team_name, score 
+        FROM teams 
+        ORDER BY score DESC
+    """)
+    teams = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # Calculate the rank of the logged-in team
+    rank = next((i + 1 for i, (name, score) in enumerate(teams) if name == team_name), None)
+
+    if rank:
+        # Find the score of the next team to compare
+        next_team_score = teams[rank] if rank < len(teams) else None
+        return jsonify({"rank": rank, "next_team_score": next_team_score})
+    else:
+        return jsonify({"error": "Team not found"}), 404
+
+
+@app.route('/api/user/submissions', methods=['GET'])
+@rate_limit(limit=100)
+def get_submission_history():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    # Fetch submission history from the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT flag, timestamp 
+        FROM flag_submissions
+        WHERE team_name = %s
+        ORDER BY timestamp DESC
+    """, (team_name,))
+    submissions = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    submission_data = [{"flag": flag, "timestamp": timestamp} for flag, timestamp in submissions]
+
+    return jsonify(submission_data)
+
+
+@app.route('/api/challenges/<int:challenge_id>/files', methods=['GET'])
+@rate_limit(limit=5)
+def download_challenge_files(challenge_id):
+    # Ensure the challenge_id is valid (you can expand this with your own validation logic)
+    if challenge_id not in [1, 2, 3, 4, 5]:
+        return jsonify({"error": "Invalid challenge ID"}), 404
+
+    # Assuming challenge files are stored in a directory called 'challenge_files'
+    challenge_file_path = f"challenge_files/{challenge_id}_files.zip"
+
+    if os.path.exists(challenge_file_path):
+        return send_from_directory('challenge_files', f"{challenge_id}_files.zip", as_attachment=True)
+    else:
+        return jsonify({"error": "Challenge files not found"}), 404
+
+
+@app.route('/api/team/history', methods=['GET'])
+@rate_limit(limit=50)
+def get_team_history():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    # Fetch team history from the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT timestamp, flags_submitted, score 
+        FROM team_history
+        WHERE team_name = %s
+        ORDER BY timestamp DESC
+    """, (team_name,))
+    history = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    history_data = [
+        {"timestamp": timestamp, "flags_submitted": flags_submitted.split(','), "score": score}
+        for timestamp, flags_submitted, score in history
+    ]
+
+    return jsonify(history_data)
+
+
+@app.route('/api/leaderboard', methods=['GET'])
+@rate_limit(limit=30)
+def get_leaderboard():
+    page = int(request.args.get('page', 1))  # Default to page 1
+    per_page = int(request.args.get('per_page', 10))  # Default to 10 teams per page
+
+    # Calculate offset for pagination
+    offset = (page - 1) * per_page
+
+    # Fetch leaderboard data from the database
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT team_name, score 
+        FROM teams
+        ORDER BY score DESC
+        LIMIT %s OFFSET %s
+    """, (per_page, offset))
+    leaderboard_local = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    return jsonify([{"team_name": team_name, "score": score} for team_name, score in leaderboard_local])
 
 
 # ----------------------- RESOURCES ----------------------- #
@@ -405,8 +621,7 @@ def binary():
         uploaded_file = request.files['file']
         if uploaded_file:
             binary_data = uploaded_file.read()
-            if "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}".encode() in binary_data and request.form.get('line',
-                                                                                                 '') == '136':  # File C3_79.bin
+            if KEY.encode() in binary_data and request.form.get('line', '') == '136':  # File C3_79.bin
                 return render_template_string(COMP_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
                                               description=description)
             else:
@@ -432,7 +647,7 @@ def forensics():
             os.remove(temp_file_path)  # Clean up the temporary file
 
             for packet in packets:
-                if (packet.haslayer('Raw') and "KEY{i_tES_TYU564678IUY^&*(I_E%$rf}" in packet['Raw'].load.decode(
+                if (packet.haslayer('Raw') and KEY in packet['Raw'].load.decode(
                         'utf-8', errors='ignore')
                         and request.form.get('line', '') == '452'):  # File C4_68.pcap
                     return render_template_string(COMP_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
@@ -454,7 +669,7 @@ def steganography():
             try:
                 # Read the entire file content
                 file_content = uploaded_file.read()
-                flag = b"KEY{i_tES_TYU564678IUY^&*(I_E%$rf}"
+                flag = KEY.encode()
                 if flag in file_content and request.form.get('line', '') == '206':  # File C5_51.jpeg
                     return render_template_string(COMP_TEMPLATE, challenge=5, success=True, flag=FLAG_5,
                                                   description=description)
@@ -462,9 +677,9 @@ def steganography():
                     return render_template_string(COMP_TEMPLATE, challenge=5,
                                                   error="Hidden flag not found or Line number incorrect.",
                                                   description=description)
-            except Exception as e:
-                return render_template_string(COMP_TEMPLATE, challenge=5, error=f"EXCEPTION: {e}",
-                                              description=description)
+            except Exception:
+                return render_template_string(COMP_TEMPLATE, challenge=5, error=f"An error occurred. Please try again!",
+                                              description=description), 500
 
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
@@ -495,5 +710,4 @@ with open("src/html/admin.html", "r") as f:
 
 # Run the app
 if __name__ == "__main__":
-    # init_db()
     serve(app, host='0.0.0.0', port=5000)
