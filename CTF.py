@@ -1,13 +1,12 @@
 import os
 import tempfile
 import time
-from collections import defaultdict
 from functools import wraps
 
 import psycopg2
 from flask import Flask, request, render_template_string, session, redirect, url_for, jsonify, make_response
 from flask import send_from_directory
-from psycopg2._psycopg import AsIs
+from psycopg2._psycopg import AsIs, DatabaseError
 from scapy.all import rdpcap
 from waitress import serve
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -37,11 +36,9 @@ FLAG_5_SCORE = 100
 # Key variable
 KEY = os.getenv("KEY", "ERR")
 
+
 if "ERR" in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5, KEY]:
     print("404: Env variable are not fully set, some are running on default - Continuing")
-
-# In-memory store for tracking requests
-request_store = defaultdict(list)
 
 
 # ------------------------- DATABASE ------------------------- #
@@ -55,8 +52,11 @@ def get_db_connection():
 # Decorator to check if the user is an admin
 def admin_required(param):
     def wrap(*args, **kwargs):
-        if 'team_name' not in session or session['team_name'] != 'ADMIN':
+        if 'team_name' not in session:
+            print("User not signed in, redirecting now")
             return redirect(url_for('signin'))
+        if session['team_name'] != 'ADMIN':
+            return jsonify({"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}), 403
         return param(*args, **kwargs)
 
     wrap.__name__ = param.__name__
@@ -65,6 +65,9 @@ def admin_required(param):
 
 # Decorator to rate limit the user - Advised not to use with @admin_required
 def rate_limit(limit, time_window=3600):
+    # Create an independent store for each decorator instance
+    request_store = {}
+
     def decorator(func):
         @wraps(func)  # Preserve the original function metadata
         def wrapper(*args, **kwargs):
@@ -86,6 +89,7 @@ def rate_limit(limit, time_window=3600):
             return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -145,7 +149,6 @@ def get_table_rows(table_name):
     return jsonify(rows)
 
 
-# noinspection SqlResolve
 @app.route('/api/tables/<table_name>/schema', methods=['GET'])
 @admin_required
 def get_table_schema(table_name):
@@ -184,7 +187,6 @@ def execute_query():
         return jsonify({"error": str(e)}), 500
 
 
-# API endpoint to view teams
 @app.route('/api/teams', methods=['GET'])
 @admin_required
 def view_teams():
@@ -197,7 +199,6 @@ def view_teams():
     return jsonify(teams)
 
 
-# API endpoint to delete the database
 @app.route('/api/delete', methods=['POST'])
 @admin_required
 def delete_database():
@@ -234,6 +235,7 @@ def api_status():
 def delete_table_item(table_name, row_id):
     try:
         conn = get_db_connection()
+
         cursor = conn.cursor()
         query = f"DELETE FROM {table_name} WHERE id = %s"
         cursor.execute(query, (row_id,))
@@ -250,6 +252,7 @@ def delete_table_item(table_name, row_id):
 def delete_table(table_name):
     try:
         conn = get_db_connection()
+
         cursor = conn.cursor()
         query = f"DROP TABLE IF EXISTS {table_name}"
         cursor.execute(query)
@@ -271,6 +274,7 @@ def get_user_profile():
 
     # Fetch user profile data from the database
     conn = get_db_connection()
+
     cursor = conn.cursor()
     cursor.execute('SELECT team_name, score, flags_submitted FROM teams WHERE team_name = %s', (team_name,))
     result = cursor.fetchone()
@@ -286,34 +290,6 @@ def get_user_profile():
         })
     else:
         return jsonify({"error": "User not found"}), 404
-
-
-@app.route('/api/challenges/progress', methods=['GET'])
-@rate_limit(limit=50)
-def get_challenge_progress():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
-
-    team_name = session['team_name']
-
-    # Fetch challenge progress from the database
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT challenge_id, flag_submitted, score
-        FROM challenge_progress
-        WHERE team_name = %s
-    """, (team_name,))
-    progress = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    progress_data = [
-        {"challenge_id": challenge_id, "flag_submitted": flag_submitted, "score": score}
-        for challenge_id, flag_submitted, score in progress
-    ]
-
-    return jsonify(progress_data)
 
 
 @app.route('/api/team/rank', methods=['GET'])
@@ -348,44 +324,18 @@ def get_team_rank():
         return jsonify({"error": "Team not found"}), 404
 
 
-@app.route('/api/user/submissions', methods=['GET'])
-@rate_limit(limit=100)
-def get_submission_history():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
-
-    team_name = session['team_name']
-
-    # Fetch submission history from the database
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT flag, timestamp 
-        FROM flag_submissions
-        WHERE team_name = %s
-        ORDER BY timestamp DESC
-    """, (team_name,))
-    submissions = cursor.fetchall()
-    cursor.close()
-    conn.close()
-
-    submission_data = [{"flag": flag, "timestamp": timestamp} for flag, timestamp in submissions]
-
-    return jsonify(submission_data)
-
-
-@app.route('/api/challenges/<int:challenge_id>/files', methods=['GET'])
+@app.route('/api/challenges/<challenge_id>/files', methods=['GET'])
 @rate_limit(limit=5)
 def download_challenge_files(challenge_id):
     # Ensure the challenge_id is valid (you can expand this with your own validation logic)
-    if challenge_id not in [1, 2, 3, 4, 5]:
-        return jsonify({"error": "Invalid challenge ID"}), 404
+    if challenge_id not in ["bin", "images", "pcap"]:
+        return jsonify({"error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"}), 404
 
-    # Assuming challenge files are stored in a directory called 'challenge_files'
-    challenge_file_path = f"challenge_files/{challenge_id}_files.zip"
+    # Assuming challenge files are stored in a directory called 'challenge'
+    challenge_file_path = f"src/assets/{challenge_id}.zip"
 
     if os.path.exists(challenge_file_path):
-        return send_from_directory('challenge_files', f"{challenge_id}_files.zip", as_attachment=True)
+        return send_from_directory('src/assets', f"{challenge_id}.zip", as_attachment=True)
     else:
         return jsonify({"error": "Challenge files not found"}), 404
 
@@ -398,25 +348,123 @@ def get_team_history():
 
     team_name = session['team_name']
 
-    # Fetch team history from the database
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT timestamp, flags_submitted, score 
-        FROM team_history
-        WHERE team_name = %s
-        ORDER BY timestamp DESC
-    """, (team_name,))
-    history = cursor.fetchall()
-    cursor.close()
-    conn.close()
+    try:
+        conn = get_db_connection()
 
-    history_data = [
-        {"timestamp": timestamp, "flags_submitted": flags_submitted.split(','), "score": score}
-        for timestamp, flags_submitted, score in history
-    ]
+        cursor = conn.cursor()
 
-    return jsonify(history_data)
+        cursor.execute("""
+            SELECT timestamp, flags_submitted, score 
+            FROM team_history
+            WHERE team_name = %s
+            ORDER BY timestamp DESC
+        """, (team_name,))
+
+        history = cursor.fetchall()
+
+        if not history:
+            return jsonify({"message": "No history found for the team"}), 404
+
+        history_data = [
+            {
+                "timestamp": timestamp,
+                "flags_submitted": flags_submitted.split(",") if flags_submitted else [],
+                "score": score
+            }
+            for timestamp, flags_submitted, score in history
+        ]
+
+        return jsonify(history_data)
+
+    except DatabaseError as e:
+        return jsonify({"error": "Database error", "details": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/user/submissions', methods=['GET'])
+@rate_limit(limit=100)
+def get_submission_history():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    try:
+        conn = get_db_connection()
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT flag, timestamp 
+            FROM flag_submissions
+            WHERE team_name = %s
+            ORDER BY timestamp DESC
+        """, (team_name,))
+
+        submissions = cursor.fetchall()
+
+        if not submissions:
+            return jsonify({"message": "No submissions found for the team"}), 404
+
+        submission_data = [
+            {"flag": flag, "timestamp": timestamp}
+            for flag, timestamp in submissions
+        ]
+
+        return jsonify(submission_data)
+
+    except DatabaseError as e:
+        return jsonify({"error": "Database error", "details": str(e)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/challenges/progress', methods=['GET'])
+@rate_limit(limit=50)
+def get_challenge_progress():
+    if 'team_name' not in session:
+        return jsonify({"error": "User not logged in"}), 401
+
+    team_name = session['team_name']
+
+    try:
+        conn = get_db_connection()
+
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT challenge_id, flag_submitted, score
+            FROM challenge_progress
+            WHERE team_name = %s
+        """, (team_name,))
+
+        progress = cursor.fetchall()
+
+        if not progress:
+            return jsonify({"message": "No progress found for the team"}), 404
+
+        progress_data = [
+            {
+                "challenge_id": challenge_id,
+                "flag_submitted": flag_submitted,
+                "score": score
+            }
+            for challenge_id, flag_submitted, score in progress
+        ]
+
+        return jsonify(progress_data)
+
+    except DatabaseError as err:
+        return jsonify({"error": "Database error", "details": str(err)}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route('/api/leaderboard', methods=['GET'])
@@ -430,6 +478,7 @@ def get_leaderboard():
 
     # Fetch leaderboard data from the database
     conn = get_db_connection()
+
     cursor = conn.cursor()
     cursor.execute("""
         SELECT team_name, score 
@@ -446,15 +495,52 @@ def get_leaderboard():
 
 # ----------------------- RESOURCES ----------------------- #
 
-# Route to download zip files
-@app.route('/src/assets/<filename>')
-def download_file(filename):
-    return send_from_directory('src/assets', filename, as_attachment=True)
+
+@app.route('/favicon.ico', methods=['GET'])
+def get_favicon():
+    return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+
+# --------------------- ERROR HANDLERS --------------------- #
+
+# noinspection PyUnusedLocal
+@app.errorhandler(400)
+def bad_request(e):
+    return render_template_string(ERROR_400_TEMPLATE), 400
+
+
+# noinspection PyUnusedLocal
+@app.errorhandler(401)
+def unauthorized(e):
+    return render_template_string(ERROR_401_TEMPLATE), 401
+
+
+# noinspection PyUnusedLocal
+@app.errorhandler(403)
+def forbidden(e):
+    return render_template_string(ERROR_403_TEMPLATE), 403
+
+
+# noinspection PyUnusedLocal
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template_string(ERROR_404_TEMPLATE), 404
+
+
+# noinspection PyUnusedLocal
+@app.errorhandler(429)
+def too_many_requests(e):
+    return render_template_string(ERROR_429_TEMPLATE), 429
+
+
+# noinspection PyUnusedLocal
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template_string(ERROR_500_TEMPLATE), 500
 
 
 # ------------------------- PAGES ------------------------- #
 
-# Home Route
 @app.route('/')
 def home():
     if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
@@ -464,14 +550,12 @@ def home():
     return render_template_string(HOME_TEMPLATE)
 
 
-# Admin route to render the admin page
 @app.route('/admin')
 @admin_required
 def admin():
     return render_template_string(ADMIN_TEMPLATE)
 
 
-# Sign-in page
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
     if request.method == 'POST':
@@ -481,6 +565,7 @@ def signin():
             return render_template_string(SIGNIN_TEMPLATE, error="Team name and password are required.")
 
         conn = get_db_connection()
+
         cursor = conn.cursor()
         cursor.execute('SELECT password, ip_address FROM teams WHERE team_name = %s', (team_name,))
         result = cursor.fetchone()
@@ -513,9 +598,10 @@ def signin():
     return render_template_string(SIGNIN_TEMPLATE)
 
 
-# Submit page
 @app.route('/submit', methods=['GET', 'POST'])
 def submit():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     points = 0
     if request.method == 'POST':
         flag = request.form.get('flag')
@@ -534,6 +620,7 @@ def submit():
             points = round(flag_scores[flag], 2)
 
         conn = get_db_connection()
+
         cursor = conn.cursor()
         cursor.execute('SELECT flags_submitted FROM teams WHERE team_name = %s', (team_name,))
         flags_submitted = cursor.fetchone()[0].split(',')
@@ -554,7 +641,6 @@ def submit():
     return render_template_string(SUBMIT_TEMPLATE)
 
 
-# Leaderboard page
 @app.route('/leaderboard')
 def leaderboard():
     conn = get_db_connection()
@@ -572,6 +658,8 @@ def leaderboard():
 # Challenge 1: Cryptography
 @app.route('/cryptography', methods=['GET', 'POST'])
 def cryptography():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     description = "Decrypt a ROT13-encrypted message to uncover the flag."
     encrypted_message = "GUVF_VF_GUR_SYNT"
 
@@ -590,6 +678,8 @@ def cryptography():
 # Challenge 2: Web Exploitation
 @app.route('/weblogin', methods=['GET', 'POST'])
 def weblogin():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     description = "Bypass the login page using SQL Injection to discover the flag."
     if request.method == 'POST':
         username = request.form.get('username', '')
@@ -616,6 +706,8 @@ def weblogin():
 # Challenge 3: Reverse Engineering
 @app.route('/binary', methods=['GET', 'POST'])
 def binary():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     description = "Analyze a binary file to find a hardcoded key (Format KEY{xxxx}). First you must find the correct BIN file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
@@ -635,6 +727,8 @@ def binary():
 # Challenge 4: Forensics
 @app.route('/forensics', methods=['GET', 'POST'])
 def forensics():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     description = "Analyze a PCAP file in [Wireshark] to find a hidden key (Format KEY{xxxx}). First you must find the correct PCAP file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
@@ -662,6 +756,8 @@ def forensics():
 # Challenge 5: Steganography
 @app.route('/steganography', methods=['GET', 'POST'])
 def steganography():
+    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+        return redirect(url_for('signin'))
     description = "Extract hidden data (Format KEY{xxxx}) from an image file using a automated script. First you must find the correct JPEG file, then the correct line number."
     if request.method == 'POST':
         uploaded_file = request.files['file']
@@ -684,7 +780,7 @@ def steganography():
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
 
-# ------------------------- SETUP -------------------------- #
+# -------------------------- HTML -------------------------- #
 
 # HTML template for home page
 with open("src/html/home.html", "r") as f:
@@ -708,6 +804,29 @@ with open("src/html/leaderboard.html", "r") as f:
 with open("src/html/admin.html", "r") as f:
     ADMIN_TEMPLATE = f.read()
 
+# Error templates
+with open("src/html/error/400.html", "r") as f:
+    ERROR_400_TEMPLATE = f.read()
+
+with open("src/html/error/401.html", "r") as f:
+    ERROR_401_TEMPLATE = f.read()
+
+with open("src/html/error/403.html", "r") as f:
+    ERROR_403_TEMPLATE = f.read()
+
+with open("src/html/error/404.html", "r") as f:
+    ERROR_404_TEMPLATE = f.read()
+
+with open("src/html/error/429.html", "r") as f:
+    ERROR_429_TEMPLATE = f.read()
+
+with open("src/html/error/500.html", "r") as f:
+    ERROR_500_TEMPLATE = f.read()
+
+# ------------------------ MAIN APP ------------------------ #
+
 # Run the app
 if __name__ == "__main__":
     serve(app, host='0.0.0.0', port=5000)
+
+# -------------------------- END --------------------------- #

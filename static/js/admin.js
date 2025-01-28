@@ -1,3 +1,5 @@
+// noinspection JSUnresolvedReference
+
 document.getElementById("executeQuery").addEventListener("click", async () => {
     const query = document.getElementById("queryInput").value.trim();
     if (!query) {

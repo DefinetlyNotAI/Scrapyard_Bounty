@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>403 Forbidden</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+</head>
+<body>
+<div class="container">
+  <h1>403 - Forbidden</h1>
+  <div class="terminal">
+    <div class="terminal-header">$ PERMISSION DENIED</div>
+    <p>ERROR: You don't have permission to access this resource</p>
+    <p>ANALYSIS: Your account lacks the necessary privileges for this action</p>
+    <p>Suggestion: Contact the administrator to request access</p>
+  </div>
+  <div class="button-group challenges">
+    <a href="/">Return to Home</a>
+  </div>
+  <div class="hint">
+    <p>Access is restricted based on your user role.<br>
+    Please ensure your account has the correct permissions.</p>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/error.js') }}"></script>
+</body>
+</html>

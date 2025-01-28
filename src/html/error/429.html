@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>429 Too Many Requests</title>
+    <link href="{{ url_for('static', filename='css/error.css') }}" rel="stylesheet">
+    <script defer src="{{ url_for('static', filename='js/error.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/rate_limit_status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.retry_after) {
+                        const cooldownElement = document.getElementById('cooldown');
+                        const minutes = Math.floor(data.retry_after / 60);
+                        const seconds = Math.floor(data.retry_after % 60);
+                        cooldownElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+                    }
+                });
+        });
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>429 - Rate Limit Exceeded</h1>
+    <div class="terminal">
+        <div class="terminal-header">$ RATE LIMITER</div>
+        <p>! WARNING: Excessive requests detected</p>
+        <p>! Cool down period initiated</p>
+        <p>! Wait until limit is reset (hourly)</p>
+    </div>
+    <div class="button-group other">
+        <a href="/">Return to Command Center</a>
+    </div>
+</div>
+</body>
+</html>

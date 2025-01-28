@@ -87,3 +87,4 @@ $RECYCLE.BIN/
 /users.db
 /secret.txt
 *.env
+/node_modules/*
