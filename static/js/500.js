@@ -24,6 +24,7 @@ function retryConnection() {
         document.querySelector('.server').style.animation = 'server-shake 0.5s ease-in-out infinite';
 
         // Attempt to refresh the page
+        // FIXME refresh ignore the below code
         location.reload();
 
         // Show a random error message if refresh fails

@@ -59,11 +59,9 @@ This project is licensed under the MIT License.
 
 ---
 
-TODO Remake
-
 # API Documentation
 
-This document provides an overview of the available API endpoints for the project. Each endpoint includes information on the HTTP method, URL, required parameters, and whether admin access is required.
+This document provides a detailed overview of the available API endpoints for the project. Each endpoint includes information on the HTTP method, URL, required parameters, and whether admin access is required.
 
 ## Endpoints
 
@@ -79,105 +77,90 @@ This document provides an overview of the available API endpoints for the projec
   }
   ```
 
-### Database Size
-- **URL:** `/api/dbsize`
+---
+
+### Execute Query
+- **URL:** `/api/executeQuery`
+- **Method:** POST
+- **Description:** Executes a query on the database. The query is provided in the request body. This endpoint requires admin access.
+- **Admin Required:** ✅
+- **Parameters:**
+    - `query`: A string representing the SQL query to be executed.
+- **Response:**
+    - **Success (200):**
+      ```json
+      {
+        "message": "Query executed successfully"
+      }
+      ```
+    - **Failure (400):**
+      ```json
+      {
+        "error": "No query provided"
+      }
+      ```
+    - **Error (500):**
+      ```json
+      {
+        "error": "Database error"
+      }
+      ```
+
+---
+
+### API Status
+- **URL:** `/api/status`
 - **Method:** GET
-- **Description:** Retrieves the size of the database.
+- **Description:** Provides the status of the API, uptime, and database connection status.
 - **Admin Required:** ❌
 - **Response:**
   ```json
   {
-    "size": "123 MB"
+    "status": "API is running",
+    "uptime_seconds": 3600,
+    "database_connected": true
   }
   ```
 
-### List Tables
-- **URL:** `/api/tables`
+---
+
+### Download Challenge Files
+- **URL:** `/api/download/<challenge_id>`
 - **Method:** GET
-- **Description:** Lists all tables in the database.
-- **Admin Required:** ✅
+- **Description:** Downloads a zip file for a specific challenge. Valid challenge IDs are `bin`, `images`, and `pcap`. Rate limiting applies.
+- **Admin Required:** ❌
+- **Parameters:**
+    - `challenge_id`: A string identifying the challenge to download (`bin`, `images`, or `pcap`).
 - **Response:**
-  ```json
-  [
-    "table1",
-    "table2"
-  ]
-  ```
+    - **Success (200):**
+      Returns the challenge file as a download.
+    - **Failure (404):**
+      ```json
+      {
+        "error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"
+      }
+      ```
 
-### Get Table Rows
-- **URL:** `/api/tables/<table_name>`
+---
+
+### Get DB Size
+- **URL:** `/api/get/size`
 - **Method:** GET
-- **Description:** Retrieves rows from a specified table.
-- **Admin Required:** ✅
-- **Response:**
-  ```json
-  [
-    ["row1_col1", "row1_col2"],
-    ["row2_col1", "row2_col2"]
-  ]
-  ```
-
-### Get Table Schema
-- **URL:** `/api/tables/<table_name>/schema`
-- **Method:** GET
-- **Description:** Retrieves the schema of a specified table.
-- **Admin Required:** ✅
-- **Response:**
-  ```json
-  [
-    {"column_name": "id", "data_type": "integer"},
-    {"column_name": "name", "data_type": "text"}
-  ]
-  ```
-
-### Execute Query
-- **URL:** `/api/query`
-- **Method:** POST
-- **Description:** Executes a SQL query.
-- **Admin Required:** ✅
-- **Request Body:**
-  ```json
-  {
-    "query": "SELECT * FROM table_name"
-  }
-  ```
-- **Response:**
-  ```json
-  [
-    ["row1_col1", "row1_col2"],
-    ["row2_col1", "row2_col2"]
-  ]
-  ```
-
-### View Teams
-- **URL:** `/api/teams`
-- **Method:** GET
-- **Description:** Retrieves a list of teams.
-- **Admin Required:** ✅
-- **Response:**
-  ```json
-  [
-    {"id": 1, "team_name": "Team1", "score": 100},
-    {"id": 2, "team_name": "Team2", "score": 150}
-  ]
-  ```
-
-### Delete Database
-- **URL:** `/api/delete`
-- **Method:** POST
-- **Description:** Deletes the database.
-- **Admin Required:** ✅
+- **Description:** Retrieves the size of the current database.
+- **Admin Required:** ❌
 - **Response:**
   ```json
   {
-    "message": "Database deleted successfully."
+    "size": "10 MB"
   }
   ```
 
-### Active Connections
-- **URL:** `/api/activeConnections`
+---
+
+### Get Active Connections
+- **URL:** `/api/get/activeConnections`
 - **Method:** GET
-- **Description:** Retrieves the number of active connections.
+- **Description:** Returns the number of active database connections. Requires admin access.
 - **Admin Required:** ✅
 - **Response:**
   ```json
@@ -186,23 +169,146 @@ This document provides an overview of the available API endpoints for the projec
   }
   ```
 
-### API Status
-- **URL:** `/api/status`
+---
+
+### View All Teams
+- **URL:** `/api/get/allTeams`
 - **Method:** GET
-- **Description:** Checks if the API is running.
-- **Admin Required:** ❌
+- **Description:** Retrieves all teams and their scores. Requires admin access.
+- **Admin Required:** ✅
 - **Response:**
   ```json
-  {
-    "status": "API is running"
-  }
+  [
+    {
+      "id": 1,
+      "team_name": "Team A",
+      "score": 100
+    },
+    {
+      "id": 2,
+      "team_name": "Team B",
+      "score": 90
+    }
+  ]
   ```
 
-### Delete Table Item
-- **URL:** `/api/tables/<table_name>/<int:row_id>`
-- **Method:** DELETE
-- **Description:** Deletes a specific item from a table.
+---
+
+### Get Challenge Progress
+- **URL:** `/api/get/challengesProgress`
+- **Method:** GET
+- **Description:** Retrieves the progress of a team's challenges. Requires the user to be logged in.
+- **Admin Required:** ❌
+- **Response:**
+    - **Success (200):**
+      ```json
+      [
+        {
+          "challenge_id": "bin",
+          "flag_submitted": true,
+          "score": 50
+        }
+      ]
+      ```
+    - **Failure (404):**
+      ```json
+      {
+        "message": "No progress found for the team"
+      }
+      ```
+
+---
+
+### Get Leaderboard
+- **URL:** `/api/get/leaderboard`
+- **Method:** GET
+- **Description:** Retrieves the leaderboard, paginated. Rate limiting applies.
+- **Admin Required:** ❌
+- **Parameters:**
+    - `page`: The page number to retrieve (default is 1).
+    - `per_page`: The number of teams per page (default is 10).
+- **Response:**
+  ```json
+  [
+    {
+      "team_name": "Team A",
+      "score": 100
+    },
+    {
+      "team_name": "Team B",
+      "score": 90
+    }
+  ]
+  ```
+
+---
+
+### Get Tables
+- **URL:** `/api/get/tables`
+- **Method:** GET
+- **Description:** Retrieves a list of all tables in the public schema. Requires admin access.
 - **Admin Required:** ✅
+- **Response:**
+  ```json
+  [
+    "teams",
+    "users"
+  ]
+  ```
+
+---
+
+### Get Table Rows
+- **URL:** `/api/get/tables/<table_name>`
+- **Method:** GET
+- **Description:** Retrieves the first 100 rows from the specified table. Requires admin access.
+- **Admin Required:** ✅
+- **Parameters:**
+    - `table_name`: The name of the table to retrieve rows from.
+- **Response:**
+  ```json
+  [
+    {
+      "id": 1,
+      "team_name": "Team A",
+      "score": 100
+    }
+  ]
+  ```
+
+---
+
+### Get Table Schema
+- **URL:** `/api/get/tables/<table_name>/schema`
+- **Method:** GET
+- **Description:** Retrieves the schema (column names and data types) for the specified table. Requires admin access.
+- **Admin Required:** ✅
+- **Parameters:**
+    - `table_name`: The name of the table to retrieve the schema for.
+- **Response:**
+  ```json
+  [
+    {
+      "column_name": "id",
+      "data_type": "integer"
+    },
+    {
+      "column_name": "team_name",
+      "data_type": "text"
+    }
+  ]
+  ```
+
+---
+
+### Delete Table Item
+- **URL:** `/api/delete/tables/<table_name>/<int:row_id>`
+- **Method:** DELETE
+- **Description:** Deletes a specific row from a table. Requires admin access.
+- **Admin Required:** ✅
+- **Parameters:**
+    - `table_name`: The name of the table from which the row will be deleted.
+    - `row_id`: The ID of the row to be deleted.
 - **Response:**
   ```json
   {
@@ -210,11 +316,15 @@ This document provides an overview of the available API endpoints for the projec
   }
   ```
 
+---
+
 ### Delete Table
-- **URL:** `/api/tables/<table_name>`
+- **URL:** `/api/delete/tables/<table_name>`
 - **Method:** DELETE
-- **Description:** Deletes a specified table.
+- **Description:** Deletes the specified table. Requires admin access.
 - **Admin Required:** ✅
+- **Parameters:**
+    - `table_name`: The name of the table to be deleted.
 - **Response:**
   ```json
   {
@@ -222,6 +332,84 @@ This document provides an overview of the available API endpoints for the projec
   }
   ```
 
-## Notes
-- Endpoints marked with ✅ require admin access.
-- Ensure to handle responses and errors appropriately in your application.
+---
+
+### Delete Database
+- **URL:** `/api/delete/database`
+- **Method:** POST
+- **Description:** Deletes the entire database by dropping tables `users` and `teams`. Requires admin access.
+- **Admin Required:** ✅
+- **Response:**
+  ```json
+  {
+    "message": "Database deleted successfully."
+  }
+  ```
+
+---
+
+### Get User Profile
+- **URL:** `/api/get/user/profile`
+- **Method:** GET
+- **Description:** Retrieves the profile of the logged-in user. Requires the user to be logged in.
+- **Admin Required:** ❌
+- **Response:**
+  ```json
+  {
+    "team_name": "Team A",
+    "score": 100,
+    "flags_submitted": ["flag1", "flag2"]
+  }
+  ```
+
+---
+
+### Get Team Rank
+- **URL:** `/api/get/user/rank`
+- **Method:** GET
+- **Description:** Retrieves the rank of the logged-in team based on the current score.
+- **Admin Required:** ❌
+- **Response:**
+  ```json
+  {
+    "rank": 1,
+    "next_team_score": {"team_name": "Team B", "score": 90}
+  }
+  ```
+
+---
+
+### Get Team History
+- **URL:** `/api/get/user/history`
+- **Method:** GET
+- **Description:** Retrieves the history of the logged-in team's submissions and scores.
+- **Admin Required:** ❌
+- **Response:**
+  ```json
+  [
+    {
+      "timestamp": "2025-01-01T12:00:00",
+      "flags_submitted": ["flag1"],
+      "score": 100
+    }
+  ]
+  ```
+
+---
+
+### Get Flag Submissions
+- **URL:** `/api/get/user/submissions`
+- **Method:** GET
+- **Description:** Retrieves the history of the logged-in team's flag submissions.
+- **Admin Required:** ❌
+- **Response:**
+  ```json
+  [
+    {
+      "flag": "flag1",
+      "timestamp": "2025-01-01T12:00:00"
+    }
+  ]
+  ```
+
+---

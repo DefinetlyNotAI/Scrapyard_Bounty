@@ -1,4 +1,4 @@
-// noinspection JSUnresolvedReference
+// noinspection JSUnresolvedReference,DuplicatedCode
 
 document.getElementById("executeQuery").addEventListener("click", async () => {
     const query = document.getElementById("queryInput").value.trim();
@@ -11,7 +11,7 @@ document.getElementById("executeQuery").addEventListener("click", async () => {
         return;
     }
 
-    const response = await fetch("/api/query", {
+    const response = await fetch("/api/get/tables", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({query})
@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const activeConnections = document.getElementById("activeConnections");
 
     // Fetch table data
-    fetch('/api/tables')
+    fetch('/api/get/tables')
         .then(response => response.json())
         .then(data => {
             // Populate table dropdown
@@ -52,11 +52,11 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             totalRecords.textContent = data.length;
-            fetch('/api/dbsize')
+            fetch('/api/get/size')
                 .then(response => response.json())
                 .then(data => {
                     dbSize.textContent = data.size;
-                    return fetch('/api/activeConnections');
+                    return fetch('/api/get/activeConnections');
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -73,7 +73,7 @@ document.addEventListener("click", (e) => {
         const tableName = document.getElementById("tableSelect").value;
 
         if (rowId && tableName) {
-            fetch(`/api/tables/${tableName}/${rowId}`, {method: "DELETE"})
+            fetch(`/api/get/tables/${tableName}/${rowId}`, {method: "DELETE"})
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -97,7 +97,7 @@ document.addEventListener("click", (e) => {
     if (e.target.classList.contains("delete-table")) {
         const tableName = e.target.dataset.tableName;
         if (tableName) {
-            fetch(`/api/tables/${tableName}`, {method: "DELETE"})
+            fetch(`/api/get/tables/${tableName}`, {method: "DELETE"})
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -135,7 +135,7 @@ function deleteTeam(id) {
         confirmButtonText: 'Yes, delete it!'
     }).then((result) => {
         if (result.isConfirmed) {
-            fetch(`/api/delete`, {
+            fetch(`/api/delete/database`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({team_id: id})
@@ -163,11 +163,18 @@ document.getElementById("searchInput").addEventListener("input", (e) => {
     });
 });
 
-function updateConnectionStatus(status) {
+function updateConnectionStatus(apiStatus, dbStatus) {
     const statusEl = document.getElementById('connectionStatus');
-    statusEl.textContent = status ? 'Connected' : 'Disconnected';
-    statusEl.style.color = status ? 'var(--success)' : 'red';
-    document.querySelector(".status-indicator").style.backgroundColor = status ? "green" : "red";
+    const dbStatusEl = document.getElementById('databaseStatus');
+    const indicator = document.querySelector(".status-indicator");
+
+    statusEl.textContent = apiStatus ? 'Connected' : 'Disconnected';
+    statusEl.style.color = apiStatus ? 'var(--success)' : 'red';
+
+    dbStatusEl.textContent = dbStatus ? 'Database Connected' : 'Database Disconnected';
+    dbStatusEl.style.color = dbStatus ? 'var(--success)' : 'red';
+
+    indicator.style.backgroundColor = apiStatus && dbStatus ? "green" : "red";
 }
 
 fetch('/api/health')
@@ -180,13 +187,16 @@ async function checkConnection() {
     try {
         const response = await fetch('/api/status', {method: 'GET'});
         const data = await response.json();
-        updateConnectionStatus(data.status === "API is running");
-        return data.status === "API is running";
+
+        const apiRunning = data.status === "API is running";
+        const dbConnected = data.database_connected === true;
+
+        updateConnectionStatus(apiRunning, dbConnected);
+        return { apiRunning, dbConnected };
     } catch (error) {
-        updateConnectionStatus(false);
+        updateConnectionStatus(false, false);
         throw error;
     } finally {
-        // Add a delay before checking the connection status again
         setTimeout(checkConnection, 10000); // Check every 10 seconds
     }
 }
@@ -212,7 +222,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 
 tableSelect.addEventListener("change", (e) => {
     const tableName = e.target.value;
-    fetch(`/api/tables/${tableName}`)
+    fetch(`/api/get/tables/${tableName}`)
         .then(res => res.json())
         .then(data => {
             dataTable.innerHTML = data.map(row => `
@@ -235,7 +245,7 @@ function deleteRow(rowId) {
         return;
     }
 
-    fetch(`/api/tables/${tableName}/${rowId}`, {method: "DELETE"})
+    fetch(`/api/get/tables/${tableName}/${rowId}`, {method: "DELETE"})
         .then(response => response.json())
         .then(data => {
             if (data.message) {
@@ -257,7 +267,7 @@ function deleteRow(rowId) {
 }
 
 async function populateTableDropdown() {
-    const response = await fetch("/api/tables");
+    const response = await fetch("/api/get/tables");
     const tables = await response.json();
 
     tableSelect.innerHTML = '<option value="">Select Table</option>';
@@ -270,7 +280,7 @@ async function populateTableDropdown() {
 }
 
 function fetchTables() {
-    fetch('/api/tables')
+    fetch('api/get/tables')
         .then(response => response.json())
         .then(tables => {
             const tableSelect = document.getElementById("tableSelect");
@@ -283,7 +293,7 @@ function fetchTables() {
 }
 
 function fetchTableData(tableName) {
-    fetch(`/api/tables/${tableName}`)
+    fetch(`/api/get/tables/${tableName}`)
         .then(response => response.json())
         .then(data => {
             const dataTable = document.getElementById("dataTable").querySelector("tbody");
