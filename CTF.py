@@ -130,8 +130,8 @@ def execute_query():
         cursor.close()
         conn.close()
         return jsonify(results), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Query Execution Failed"}), 500
 
 
 @app.route('/api/status', methods=['GET'])
@@ -242,8 +242,8 @@ def get_challenge_progress():
 
         return jsonify(progress_data), 200
 
-    except DatabaseError as err:
-        return jsonify({"error": "Database error", "details": str(err)}), 500
+    except DatabaseError:
+        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
 
     finally:
         cursor.close()
@@ -309,8 +309,8 @@ def get_table_rows(table_name: str):
         cursor.close()
         conn.close()
         return jsonify(rows), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Getting the table rows failed"}), 500
 
 
 @app.route('/api/get/tables/<table_name>/schema', methods=['GET'])
@@ -338,14 +338,14 @@ def delete_table_item(table_name: str, row_id: int):
         conn = get_db_connection()
 
         cursor = conn.cursor()
-        query = f"DELETE FROM {table_name} WHERE id = %s"
-        cursor.execute(query, (row_id,))
+        query = f"DELETE FROM %s WHERE id = %s"
+        cursor.execute(query, (table_name, row_id))
         conn.commit()
         cursor.close()
         conn.close()
         return jsonify({"message": "Item deleted successfully."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Deleting the table item failed"}), 500
 
 
 @app.route('/api/delete/tables/<table_name>', methods=['DELETE'])
@@ -362,8 +362,8 @@ def delete_table(table_name: str):
         cursor.close()
         conn.close()
         return jsonify({"message": "Table deleted successfully."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Deleting the table failed"}), 500
 
 
 @app.route('/api/delete/database', methods=['POST'])
@@ -476,8 +476,8 @@ def get_team_history():
 
         return jsonify(history_data), 200
 
-    except DatabaseError as e:
-        return jsonify({"error": "Database error", "details": str(e)}), 500
+    except DatabaseError:
+        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
 
     finally:
         cursor.close()
@@ -516,8 +516,8 @@ def get_submission_history():
 
         return jsonify(submission_data), 200
 
-    except DatabaseError as e:
-        return jsonify({"error": "Database error", "details": str(e)}), 500
+    except DatabaseError:
+        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
 
     finally:
         cursor.close()
@@ -626,7 +626,7 @@ def signin():
         conn.close()
 
         resp = make_response(redirect(url_for('home')))
-        resp.set_cookie('team_name', team_name)
+        resp.set_cookie('team_name', team_name, secure=True, samesite='Strict')
         return resp
     return render_template_string(SIGNIN_TEMPLATE), 200
 
