@@ -4,6 +4,7 @@ import time
 from functools import wraps
 
 import psycopg2
+import requests
 from flask import Flask, request, render_template_string, session, redirect, url_for, jsonify, make_response, abort
 from flask import send_from_directory
 from psycopg2 import sql
@@ -183,7 +184,7 @@ def get_db_size():
 
 
 @app.route('/api/get/activeConnections', methods=['GET'])
-@admin_required
+@rate_limit(limit=60)
 def get_active_connections():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -195,7 +196,7 @@ def get_active_connections():
 
 
 @app.route('/api/get/allTeams', methods=['GET'])
-@admin_required
+@rate_limit(limit=60)
 def view_teams():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -522,6 +523,7 @@ def get_submission_history():
         cursor.close()
         conn.close()
 
+
 # ------------------------ END APIs ------------------------- #
 
 # ------------------------ RESOURCES ------------------------ #
@@ -530,6 +532,17 @@ def get_submission_history():
 @app.route('/favicon.ico', methods=['GET'])
 def get_favicon():
     return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon'), 200
+
+
+@app.route('/retry/<url_to_check>', methods=['POST'])
+@rate_limit(limit=60)
+def retry(url_to_check: str):
+    try:
+        response = requests.get(url_to_check)
+        if response.status_code == 200:
+            return jsonify({"message": "Retry successful"}), 200
+    except requests.RequestException:
+        return jsonify({"message": "Retry failed after attempt."}), 500
 
 
 # ---------------------- ERROR HANDLERS --------------------- #
@@ -601,14 +614,12 @@ def signin():
                                (request.remote_addr, team_name))
             else:
                 return render_template_string(SIGNIN_TEMPLATE, error="Invalid password."), 401
-            code = 200
         else:
             hashed_password = generate_password_hash(password)
             cursor.execute(
                 'INSERT INTO teams (team_name, password, ip_address, flags_submitted) VALUES (%s, %s, %s, %s)',
                 (team_name, hashed_password, request.remote_addr, ''))
             session['team_name'] = team_name
-            code = 201
 
         conn.commit()
         cursor.close()
@@ -616,7 +627,7 @@ def signin():
 
         resp = make_response(redirect(url_for('home')))
         resp.set_cookie('team_name', team_name)
-        return resp, code
+        return resp
     return render_template_string(SIGNIN_TEMPLATE), 200
 
 

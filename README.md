@@ -161,7 +161,7 @@ This document provides a detailed overview of the available API endpoints for th
 - **URL:** `/api/get/activeConnections`
 - **Method:** GET
 - **Description:** Returns the number of active database connections. Requires admin access.
-- **Admin Required:** ✅
+- **Admin Required:** ❌
 - **Response:**
   ```json
   {
@@ -175,7 +175,7 @@ This document provides a detailed overview of the available API endpoints for th
 - **URL:** `/api/get/allTeams`
 - **Method:** GET
 - **Description:** Retrieves all teams and their scores. Requires admin access.
-- **Admin Required:** ✅
+- **Admin Required:** ❌
 - **Response:**
   ```json
   [
