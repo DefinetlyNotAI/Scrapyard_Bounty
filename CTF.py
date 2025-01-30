@@ -47,7 +47,7 @@ if "ERR" in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5, KEY]:
 # ------------------------- DATABASE ------------------------- #
 
 # Database connection
-def get_db_connection():
+def get_db_connection() -> psycopg2._psycopg.connection:
     conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"), dbname=os.getenv("DB_NAME"))
     return conn
 
@@ -55,13 +55,16 @@ def get_db_connection():
 # Decorator to check if the user is an admin
 def admin_required(param: callable):
     def wrap(*args, **kwargs):
-        if 'team_name' not in session:
-            print("User not signed in, redirecting now")
-            return redirect(url_for('signin'))
-        if session['team_name'] != 'ADMIN':
-            abort(403,
-                  description=jsonify({"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}))
-        return param(*args, **kwargs)
+        try:
+            if 'team_name' not in session:
+                print("User not signed in, redirecting now")
+                return redirect(url_for('signin'))
+            if session['team_name'] != 'ADMIN':
+                abort(403,
+                      description=jsonify({"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}))
+            return param(*args, **kwargs)
+        except Exception:
+            abort(500, description=jsonify({"error": "Internal Server Error - Admin Required Decorator"}))
 
     wrap.__name__ = param.__name__
     return wrap
@@ -75,22 +78,25 @@ def rate_limit(limit: int, time_window: int = 3600):
     def decorator(func):
         @wraps(func)  # Preserve the original function metadata
         def wrapper(*args, **kwargs):
-            user_ip = request.remote_addr
-            current_time = time.time()
-
-            # Ensure user IP is in the request store
-            if user_ip not in request_store:
-                request_store[user_ip] = []
-
-            timestamps = request_store[user_ip]
-            valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
-            request_store[user_ip] = valid_timestamps
-
-            if len(valid_timestamps) >= limit:
-                abort(429, description=jsonify({"error": "Rate limit exceeded. Try again later."}))
-
-            request_store[user_ip].append(current_time)
-            return func(*args, **kwargs)
+            try:
+                user_ip = request.remote_addr
+                current_time = time.time()
+    
+                # Ensure user IP is in the request store
+                if user_ip not in request_store:
+                    request_store[user_ip] = []
+    
+                timestamps = request_store[user_ip]
+                valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
+                request_store[user_ip] = valid_timestamps
+    
+                if len(valid_timestamps) >= limit:
+                    abort(429, description=jsonify({"error": "Rate limit exceeded. Try again later."}))
+    
+                request_store[user_ip].append(current_time)
+                return func(*args, **kwargs)
+            except Exception:
+                abort(500, description=jsonify({"error": "Internal Server Error - Rate Limit Decorator"}))
 
         return wrapper
 
@@ -131,7 +137,7 @@ def execute_query():
         conn.close()
         return jsonify(results), 200
     except Exception:
-        return jsonify({"error": "Query Execution Failed"}), 500
+        return jsonify({"error": "Query Execution Failed - API execute_query"}), 500
 
 
 @app.route('/api/status', methods=['GET'])
@@ -243,7 +249,9 @@ def get_challenge_progress():
         return jsonify(progress_data), 200
 
     except DatabaseError:
-        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
+        return jsonify({"error": "Database error has occurred - Function get_challenge_progress"}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred - Function get_challenge_progress"}), 500
 
     finally:
         cursor.close()
@@ -477,7 +485,9 @@ def get_team_history():
         return jsonify(history_data), 200
 
     except DatabaseError:
-        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
+        return jsonify({"error": "Database error - Getting team history"}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred - Getting team history"}), 500
 
     finally:
         cursor.close()
@@ -517,7 +527,9 @@ def get_submission_history():
         return jsonify(submission_data), 200
 
     except DatabaseError:
-        return jsonify({"error": "Database error", "details": "THIS FEATURE IS DEPRECATED DUE TO SECURITY REASONS"}), 500
+        return jsonify({"error": "Database error - Get submission history"}), 500
+    except Exception:
+        return jsonify({"error": "An error occurred - Get submission history"}), 500
 
     finally:
         cursor.close()
@@ -541,7 +553,11 @@ def retry(url_to_check: str):
         response = requests.get(url_to_check)
         if response.status_code == 200:
             return jsonify({"message": "Retry successful"}), 200
+        else:
+            return jsonify({"message": "Retry failed"}), 500
     except requests.RequestException:
+        return jsonify({"message": "Retry failed after attempt."}), 500
+    except Exception:
         return jsonify({"message": "Retry failed after attempt."}), 500
 
 
@@ -692,116 +708,128 @@ def leaderboard():
 # Challenge 1: Cryptography
 @app.route('/cryptography', methods=['GET', 'POST'])
 def cryptography():
-    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
-        return redirect(url_for('signin'))
-    description = "Decrypt a ROT13-encrypted message to uncover the flag."
-    encrypted_message = "GUVF_VF_GUR_SYNT"
+    try:
+        if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+            return redirect(url_for('signin'))
+        description = "Decrypt a ROT13-encrypted message to uncover the flag."
+        encrypted_message = "GUVF_VF_GUR_SYNT"
 
-    if request.method == 'POST':
-        user_input = request.form.get('decrypted')
-        if user_input == "THIS_IS_THE_FLAG":
-            return render_template_string(COMP_TEMPLATE, challenge=1, success=True, flag=FLAG_1,
-                                          description=description, encrypted=encrypted_message), 200
-        else:
-            return render_template_string(COMP_TEMPLATE, challenge=1, error="Incorrect decryption.",
-                                          description=description, encrypted=encrypted_message), 400
+        if request.method == 'POST':
+            user_input = request.form.get('decrypted')
+            if user_input == "THIS_IS_THE_FLAG":
+                return render_template_string(COMP_TEMPLATE, challenge=1, success=True, flag=FLAG_1,
+                                              description=description, encrypted=encrypted_message), 200
+            else:
+                return render_template_string(COMP_TEMPLATE, challenge=1, error="Incorrect decryption.",
+                                              description=description, encrypted=encrypted_message), 400
 
-    return render_template_string(COMP_TEMPLATE, challenge=1, description=description, encrypted=encrypted_message), 200
+        return render_template_string(COMP_TEMPLATE, challenge=1, description=description, encrypted=encrypted_message), 200
+    except Exception:
+        abort(500, jsonify({"error": "Internal Server Error - Challenge 1"}))
 
 
 # Challenge 2: Web Exploitation
 @app.route('/weblogin', methods=['GET', 'POST'])
 def weblogin():
-    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
-        return redirect(url_for('signin'))
-    description = "Bypass the login page using SQL Injection to discover the flag."
-    if request.method == 'POST':
-        username = request.form.get('username', '')
-        password = request.form.get('password', '')
+    try:
+        if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+            return redirect(url_for('signin'))
+        description = "Bypass the login page using SQL Injection to discover the flag."
+        if request.method == 'POST':
+            username = request.form.get('username', '')
+            password = request.form.get('password', '')
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
-        cursor.execute(query)
-        user = cursor.fetchone()
-        cursor.close()
-        conn.close()
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+            cursor.execute(query)
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
 
-        if user:
-            return render_template_string(COMP_TEMPLATE, challenge=2, success=True, flag=FLAG_2,
-                                          description=description), 200
-        else:
-            return render_template_string(COMP_TEMPLATE, challenge=2, error="Invalid credentials.",
-                                          description=description), 400
+            if user:
+                return render_template_string(COMP_TEMPLATE, challenge=2, success=True, flag=FLAG_2,
+                                              description=description), 200
+            else:
+                return render_template_string(COMP_TEMPLATE, challenge=2, error="Invalid credentials.",
+                                              description=description), 400
 
-    return render_template_string(COMP_TEMPLATE, challenge=2, description=description), 200
+        return render_template_string(COMP_TEMPLATE, challenge=2, description=description), 200
+    except Exception:
+        abort(500, jsonify({"error": "Internal Server Error - Challenge 2"}))
 
 
 # Challenge 3: Reverse Engineering
 @app.route('/binary', methods=['GET', 'POST'])
 def binary():
-    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
-        return redirect(url_for('signin'))
-    description = "Analyze a binary file to find a hardcoded key (Format KEY{xxxx}). First you must find the correct BIN file, then the correct line number."
-    if request.method == 'POST':
-        uploaded_file = request.files['file']
-        if not uploaded_file:
-            return render_template_string(COMP_TEMPLATE, challenge=3,
-                                          error="No file uploaded",
-                                          description=description), 400
-        if not uploaded_file.filename.endswith('.bin'):
-            return render_template_string(COMP_TEMPLATE, challenge=3,
-                                          error="Invalid file type",
-                                          description=description), 400
-        binary_data = uploaded_file.read()
-        if KEY.encode() in binary_data and request.form.get('line', '') == '136':  # File C3_79.bin
-            return render_template_string(COMP_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
-                                          description=description), 200
-        else:
-            return render_template_string(COMP_TEMPLATE, challenge=3,
-                                          error="Flag not found in the binary or Line number incorrect.",
-                                          description=description), 400
+    try:
+        if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+            return redirect(url_for('signin'))
+        description = "Analyze a binary file to find a hardcoded key (Format KEY{xxxx}). First you must find the correct BIN file, then the correct line number."
+        if request.method == 'POST':
+            uploaded_file = request.files['file']
+            if not uploaded_file:
+                return render_template_string(COMP_TEMPLATE, challenge=3,
+                                              error="No file uploaded",
+                                              description=description), 400
+            if not uploaded_file.filename.endswith('.bin'):
+                return render_template_string(COMP_TEMPLATE, challenge=3,
+                                              error="Invalid file type",
+                                              description=description), 400
+            binary_data = uploaded_file.read()
+            if KEY.encode() in binary_data and request.form.get('line', '') == '136':  # File C3_79.bin
+                return render_template_string(COMP_TEMPLATE, challenge=3, success=True, flag=FLAG_3,
+                                              description=description), 200
+            else:
+                return render_template_string(COMP_TEMPLATE, challenge=3,
+                                              error="Flag not found in the binary or Line number incorrect.",
+                                              description=description), 400
 
-    return render_template_string(COMP_TEMPLATE, challenge=3, description=description), 200
+        return render_template_string(COMP_TEMPLATE, challenge=3, description=description), 200
+    except Exception:
+        abort(500, jsonify({"error": "Internal Server Error - Challenge 3"}))
 
 
 # Challenge 4: Forensics
 @app.route('/forensics', methods=['GET', 'POST'])
 def forensics():
-    if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
-        return redirect(url_for('signin'))
-    description = "Analyze a PCAP file in [Wireshark] to find a hidden key (Format KEY{xxxx}). First you must find the correct PCAP file, then the correct line number."
-    if request.method == 'POST':
-        uploaded_file = request.files['file']
-        if not uploaded_file:
+    try:
+        if 'team_name' not in session or request.cookies.get('team_name') != session['team_name']:
+            return redirect(url_for('signin'))
+        description = "Analyze a PCAP file in [Wireshark] to find a hidden key (Format KEY{xxxx}). First you must find the correct PCAP file, then the correct line number."
+        if request.method == 'POST':
+            uploaded_file = request.files['file']
+            if not uploaded_file:
+                return render_template_string(COMP_TEMPLATE, challenge=4,
+                                              error="No file uploaded",
+                                              description=description), 400
+
+            if not uploaded_file.filename.endswith('.pcap'):
+                return render_template_string(COMP_TEMPLATE, challenge=4,
+                                              error="Invalid file type",
+                                              description=description), 400
+
+            try:
+                with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    temp_file.write(uploaded_file.read())
+                    temp_file_path = temp_file.name
+            finally:
+                packets = rdpcap(temp_file_path)
+                os.remove(temp_file_path)  # Clean up the temporary file
+
+            for packet in packets:
+                if (packet.haslayer('Raw') and KEY in packet['Raw'].load.decode(
+                        'utf-8', errors='ignore')
+                        and request.form.get('line', '') == '452'):  # File C4_68.pcap
+                    return render_template_string(COMP_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
+                                                  description=description), 200
             return render_template_string(COMP_TEMPLATE, challenge=4,
-                                          error="No file uploaded",
+                                          error="Flag not found in PCAP or Line number incorrect.",
                                           description=description), 400
 
-        if not uploaded_file.filename.endswith('.pcap'):
-            return render_template_string(COMP_TEMPLATE, challenge=4,
-                                          error="Invalid file type",
-                                          description=description), 400
-
-        try:
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(uploaded_file.read())
-                temp_file_path = temp_file.name
-        finally:
-            packets = rdpcap(temp_file_path)
-            os.remove(temp_file_path)  # Clean up the temporary file
-
-        for packet in packets:
-            if (packet.haslayer('Raw') and KEY in packet['Raw'].load.decode(
-                    'utf-8', errors='ignore')
-                    and request.form.get('line', '') == '452'):  # File C4_68.pcap
-                return render_template_string(COMP_TEMPLATE, challenge=4, success=True, flag=FLAG_4,
-                                              description=description), 200
-        return render_template_string(COMP_TEMPLATE, challenge=4,
-                                      error="Flag not found in PCAP or Line number incorrect.",
-                                      description=description), 400
-
-    return render_template_string(COMP_TEMPLATE, challenge=4, description=description), 200
+        return render_template_string(COMP_TEMPLATE, challenge=4, description=description), 200
+    except Exception:
+        abort(500, jsonify({"error": "Internal Server Error - Challenge 4"}))
 
 
 # Challenge 5: Steganography
@@ -834,48 +862,50 @@ def steganography():
                                               error="Hidden flag not found or Line number incorrect.",
                                               description=description), 400
         except Exception:
-            return render_template_string(COMP_TEMPLATE, challenge=5, error=f"An error occurred. Please try again!",
-                                          description=description), 500
+            abort(500, jsonify({"error": "Internal Server Error - Challenge 5"}))
 
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
 
 # --------------------------- HTML --------------------------- #
 
-# HTML template for home page
-with open("src/html/home.html", "r") as f:
-    HOME_TEMPLATE = f.read()
+try:
+    # HTML template for home page
+    with open("src/html/home.html", "r") as f:
+        HOME_TEMPLATE = f.read()
 
-# HTML template for challenges
-with open("src/html/competition.html", "r") as f:
-    COMP_TEMPLATE = f.read()
+    # HTML template for challenges
+    with open("src/html/competition.html", "r") as f:
+        COMP_TEMPLATE = f.read()
 
-# HTML templates for sign-in, submit and leaderboard pages
-with open("src/html/signin.html", "r") as f:
-    SIGNIN_TEMPLATE = f.read()
+    # HTML templates for sign-in, submit and leaderboard pages
+    with open("src/html/signin.html", "r") as f:
+        SIGNIN_TEMPLATE = f.read()
 
-with open("src/html/submit.html", "r", encoding="UTF-8") as f:
-    SUBMIT_TEMPLATE = f.read()
+    with open("src/html/submit.html", "r", encoding="UTF-8") as f:
+        SUBMIT_TEMPLATE = f.read()
 
-with open("src/html/leaderboard.html", "r") as f:
-    LEADERBOARD_TEMPLATE = f.read()
+    with open("src/html/leaderboard.html", "r") as f:
+        LEADERBOARD_TEMPLATE = f.read()
 
-# HTML template for admin page
-with open("src/html/admin.html", "r") as f:
-    ADMIN_TEMPLATE = f.read()
+    # HTML template for admin page
+    with open("src/html/admin.html", "r") as f:
+        ADMIN_TEMPLATE = f.read()
 
-# Error templates
-with open("src/html/error/403.html", "r") as f:
-    ERROR_403_TEMPLATE = f.read()
+    # Error templates
+    with open("src/html/error/403.html", "r") as f:
+        ERROR_403_TEMPLATE = f.read()
 
-with open("src/html/error/404.html", "r") as f:
-    ERROR_404_TEMPLATE = f.read()
+    with open("src/html/error/404.html", "r") as f:
+        ERROR_404_TEMPLATE = f.read()
 
-with open("src/html/error/429.html", "r") as f:
-    ERROR_429_TEMPLATE = f.read()
+    with open("src/html/error/429.html", "r") as f:
+        ERROR_429_TEMPLATE = f.read()
 
-with open("src/html/error/500.html", "r") as f:
-    ERROR_500_TEMPLATE = f.read()
+    with open("src/html/error/500.html", "r") as f:
+        ERROR_500_TEMPLATE = f.read()
+except Exception:
+    abort(500, jsonify({"error": "Internal Server Error - HTML Templates failed to load"}))
 
 # ------------------------- MAIN APP ------------------------- #
 
