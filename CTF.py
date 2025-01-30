@@ -105,18 +105,6 @@ def rate_limit(limit: int, time_window: int = 3600):
 
 # --------------------------- APIs ---------------------------- #
 # ------------------------ Standalone --------------------------#
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT 1")
-        cursor.close()
-        conn.close()
-        return jsonify({"status": True}), 200
-    except Exception:
-        return jsonify({"status": False}), 200
-
 
 @app.route('/api/executeQuery', methods=['POST'])
 @admin_required
@@ -158,7 +146,7 @@ def api_status():
         "status": "API is running",
         "uptime_seconds": uptime,
         "database_connected": db_status
-    }), 200
+    })
 
 
 @app.route('/api/download/<challenge_id>', methods=['GET'])

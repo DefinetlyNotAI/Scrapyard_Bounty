@@ -61,94 +61,67 @@ This project is licensed under the MIT License.
 
 # API Documentation
 
-This document provides a detailed overview of the available API endpoints for the project. Each endpoint includes information on the HTTP method, URL, required parameters, and whether admin access is required.
+This document provides a detailed overview of the available API endpoints for the project. 
+Each endpoint includes information on the HTTP method, URL, required parameters, 
+and whether admin access is required as well as rate limits.
 
-## Endpoints
+---
 
-### Health Check
-- **URL:** `/api/health`
-- **Method:** GET
-- **Description:** Checks the health status of the API.
-- **Admin Required:** ❌
-- **Response:**
+### `/api/executeQuery`
+- **Method:** POST
+- **Description:** Executes raw SQL queries (Select, Insert, Update, Delete).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ❌ (Requires POST request with JSON body)
+- **Request Body Preview:**
   ```json
   {
-    "status": true
+    "query": "SELECT * FROM users"
+  }
+  ```
+- **Response Preview:**
+  ```json
+  {
+    "message": "Query executed successfully"
   }
   ```
 
 ---
 
-### Execute Query
-- **URL:** `/api/executeQuery`
-- **Method:** POST
-- **Description:** Executes a query on the database. The query is provided in the request body. This endpoint requires admin access.
-- **Admin Required:** ✅
-- **Parameters:**
-    - `query`: A string representing the SQL query to be executed.
-- **Response:**
-    - **Success (200):**
-      ```json
-      {
-        "message": "Query executed successfully"
-      }
-      ```
-    - **Failure (400):**
-      ```json
-      {
-        "error": "No query provided"
-      }
-      ```
-    - **Error (500):**
-      ```json
-      {
-        "error": "Database error"
-      }
-      ```
-
----
-
-### API Status
-- **URL:** `/api/status`
+### `/api/status`
 - **Method:** GET
-- **Description:** Provides the status of the API, uptime, and database connection status.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Checks API status and database connection.
+- **Admin?:** 🔓
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✅
+- **Response Preview:**
   ```json
   {
     "status": "API is running",
-    "uptime_seconds": 3600,
+    "uptime_seconds": 12345,
     "database_connected": true
   }
   ```
 
 ---
 
-### Download Challenge Files
-- **URL:** `/api/download/<challenge_id>`
+### `/api/download/<challenge_id>`
 - **Method:** GET
-- **Description:** Downloads a zip file for a specific challenge. Valid challenge IDs are `bin`, `images`, and `pcap`. Rate limiting applies.
-- **Admin Required:** ❌
-- **Parameters:**
-    - `challenge_id`: A string identifying the challenge to download (`bin`, `images`, or `pcap`).
-- **Response:**
-    - **Success (200):**
-      Returns the challenge file as a download.
-    - **Failure (404):**
-      ```json
-      {
-        "error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"
-      }
-      ```
+- **Description:** Downloads challenge files by ID (e.g., bin, images, pcap).
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 5 requests/hour
+- **Plug and Play?:** ✔️ (Browser-accessible if challenge exists, must be signed in)
+- **Response Preview:** Download file (`.zip` file)
 
 ---
 
-### Get DB Size
-- **URL:** `/api/get/size`
+### `/api/get/size`
 - **Method:** GET
 - **Description:** Retrieves the size of the current database.
-- **Admin Required:** ❌
-- **Response:**
+- **Admin?:** 🔓
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✅
+- **Response Preview:**
   ```json
   {
     "size": "10 MB"
@@ -157,12 +130,13 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get Active Connections
-- **URL:** `/api/get/activeConnections`
+### `/api/get/activeConnections`
 - **Method:** GET
-- **Description:** Returns the number of active database connections. Requires admin access.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Returns the count of active database connections.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 60 requests/hour
+- **Plug and Play?:** ✅
+- **Response Preview:**
   ```json
   {
     "activeConnections": 5
@@ -171,12 +145,13 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### View All Teams
-- **URL:** `/api/get/allTeams`
+### `/api/get/allTeams`
 - **Method:** GET
-- **Description:** Retrieves all teams and their scores. Requires admin access.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Retrieves all teams' IDs, names, and scores.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 60 requests/hour
+- **Plug and Play?:** ✅
+- **Response Preview:**
   ```json
   [
     {
@@ -194,40 +169,32 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get Challenge Progress
-- **URL:** `/api/get/challengesProgress`
+### `/api/get/challengesProgress`
 - **Method:** GET
-- **Description:** Retrieves the progress of a team's challenges. Requires the user to be logged in.
-- **Admin Required:** ❌
-- **Response:**
-    - **Success (200):**
-      ```json
-      [
-        {
-          "challenge_id": "bin",
-          "flag_submitted": true,
-          "score": 50
-        }
-      ]
-      ```
-    - **Failure (404):**
-      ```json
-      {
-        "message": "No progress found for the team"
-      }
-      ```
+- **Description:** Retrieves a logged-in team's challenge progress (including flags and score).
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 50 requests/hour
+- **Plug and Play?:** ✔️ (Requires session with logged-in user)
+- **Response Preview:**
+  ```json
+  [
+    {
+      "challenge_id": "bin",
+      "flag_submitted": true,
+      "score": 20
+    }
+  ]
+  ```
 
 ---
 
-### Get Leaderboard
-- **URL:** `/api/get/leaderboard`
+### `/api/get/leaderboard`
 - **Method:** GET
-- **Description:** Retrieves the leaderboard, paginated. Rate limiting applies.
-- **Admin Required:** ❌
-- **Parameters:**
-    - `page`: The page number to retrieve (default is 1).
-    - `per_page`: The number of teams per page (default is 10).
-- **Response:**
+- **Description:** Retrieves the leaderboard with pagination.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 30 requests/hour
+- **Plug and Play?:** ✅ (Pagination query parameters needed)
+- **Response Preview:**
   ```json
   [
     {
@@ -243,73 +210,58 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get Tables
-- **URL:** `/api/get/tables`
+### `/api/get/tables`
 - **Method:** GET
-- **Description:** Retrieves a list of all tables in the public schema. Requires admin access.
-- **Admin Required:** ✅
-- **Response:**
+- **Description:** Retrieves all database table names (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
+  ```json
+  ["teams", "users"]
+  ```
+
+---
+
+### `/api/get/tables/<table_name>`
+- **Method:** GET
+- **Description:** Retrieves all rows from a specific table (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
   ```json
   [
-    "teams",
-    "users"
+    [1, "Team A", 100],
+    [2, "Team B", 90]
   ]
   ```
 
 ---
 
-### Get Table Rows
-- **URL:** `/api/get/tables/<table_name>`
+### `/api/get/tables/<table_name>/schema`
 - **Method:** GET
-- **Description:** Retrieves the first 100 rows from the specified table. Requires admin access.
-- **Admin Required:** ✅
-- **Parameters:**
-    - `table_name`: The name of the table to retrieve rows from.
-- **Response:**
+- **Description:** Retrieves the schema of a specific table (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
   ```json
   [
-    {
-      "id": 1,
-      "team_name": "Team A",
-      "score": 100
-    }
+    {"column_name": "id", "data_type": "integer"},
+    {"column_name": "team_name", "data_type": "text"}
   ]
   ```
 
 ---
 
-### Get Table Schema
-- **URL:** `/api/get/tables/<table_name>/schema`
-- **Method:** GET
-- **Description:** Retrieves the schema (column names and data types) for the specified table. Requires admin access.
-- **Admin Required:** ✅
-- **Parameters:**
-    - `table_name`: The name of the table to retrieve the schema for.
-- **Response:**
-  ```json
-  [
-    {
-      "column_name": "id",
-      "data_type": "integer"
-    },
-    {
-      "column_name": "team_name",
-      "data_type": "text"
-    }
-  ]
-  ```
-
----
-
-### Delete Table Item
-- **URL:** `/api/delete/tables/<table_name>/<int:row_id>`
+### `/api/delete/tables/<table_name>/<int:row_id>`
 - **Method:** DELETE
-- **Description:** Deletes a specific row from a table. Requires admin access.
-- **Admin Required:** ✅
-- **Parameters:**
-    - `table_name`: The name of the table from which the row will be deleted.
-    - `row_id`: The ID of the row to be deleted.
-- **Response:**
+- **Description:** Deletes a specific row from a table (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
   ```json
   {
     "message": "Item deleted successfully."
@@ -318,14 +270,13 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Delete Table
-- **URL:** `/api/delete/tables/<table_name>`
+### `/api/delete/tables/<table_name>`
 - **Method:** DELETE
-- **Description:** Deletes the specified table. Requires admin access.
-- **Admin Required:** ✅
-- **Parameters:**
-    - `table_name`: The name of the table to be deleted.
-- **Response:**
+- **Description:** Deletes an entire table (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
   ```json
   {
     "message": "Table deleted successfully."
@@ -334,12 +285,13 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Delete Database
-- **URL:** `/api/delete/database`
+### `/api/delete/database`
 - **Method:** POST
-- **Description:** Deletes the entire database by dropping tables `users` and `teams`. Requires admin access.
-- **Admin Required:** ✅
-- **Response:**
+- **Description:** Deletes the entire database (Admin only).
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response Preview:**
   ```json
   {
     "message": "Database deleted successfully."
@@ -348,12 +300,13 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get User Profile
-- **URL:** `/api/get/user/profile`
+### `/api/get/user/profile`
 - **Method:** GET
-- **Description:** Retrieves the profile of the logged-in user. Requires the user to be logged in.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Retrieves the profile of the logged-in user (team name, score, etc.).
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 100 requests/hour
+- **Plug and Play?:** ✔️ (User must be logged in)
+- **Response Preview:**
   ```json
   {
     "team_name": "Team A",
@@ -364,31 +317,33 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get Team Rank
-- **URL:** `/api/get/user/rank`
+### `/api/get/user/rank`
 - **Method:** GET
-- **Description:** Retrieves the rank of the logged-in team based on the current score.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Retrieves the rank of the logged-in team.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 20 requests/hour
+- **Plug and Play?:** ✔️ (User must be logged in)
+- **Response Preview:**
   ```json
   {
     "rank": 1,
-    "next_team_score": {"team_name": "Team B", "score": 90}
+    "next_team_score": 90
   }
   ```
 
 ---
 
-### Get Team History
-- **URL:** `/api/get/user/history`
+### `/api/get/user/history`
 - **Method:** GET
-- **Description:** Retrieves the history of the logged-in team's submissions and scores.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Retrieves the history of a team's score and flag submissions.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 50 requests/hour
+- **Plug and Play?:** ✔️ (User must be logged in)
+- **Response Preview:**
   ```json
   [
     {
-      "timestamp": "2025-01-01T12:00:00",
+      "timestamp": "2025-01-01T12:00:00Z",
       "flags_submitted": ["flag1"],
       "score": 100
     }
@@ -397,19 +352,33 @@ This document provides a detailed overview of the available API endpoints for th
 
 ---
 
-### Get Flag Submissions
-- **URL:** `/api/get/user/submissions`
+### `/api/get/user/submissions`
 - **Method:** GET
-- **Description:** Retrieves the history of the logged-in team's flag submissions.
-- **Admin Required:** ❌
-- **Response:**
+- **Description:** Retrieves the history of a team's flag submissions.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 100 requests/hour
+- **Plug and Play?:** ✔️ (User must be logged in)
+- **Response Preview:**
   ```json
   [
     {
       "flag": "flag1",
-      "timestamp": "2025-01-01T12:00:00"
+      "timestamp": "2025-01-01T12:00:00Z"
     }
   ]
   ```
+
+---
+
+### Mini Table for Emoji Explanation
+
+| Emoji | Sector        | Meaning                                                                             |
+|-------|---------------|-------------------------------------------------------------------------------------|
+| ❌     | Plug and Play | Impossible to use directly in the browser (requires proper HTTP requests)           |
+| ✔️    | Plug and Play | Requires some setup (like being logged in or an admin) but still browser-accessible |
+| ✅     | Plug and Play | Fully accessible via browser without any additional setup                           |
+| 🔓    | Admin?        | No admin required to use the api                                                    |
+| 🔐    | Admin?        | Admin is required to use the api                                                    |
+| 🚀    | Rate Limit    | No rate limit                                                                       |
 
 ---

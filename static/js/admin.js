@@ -11,7 +11,7 @@ document.getElementById("executeQuery").addEventListener("click", async () => {
         return;
     }
 
-    const response = await fetch("/api/get/tables", {
+    const response = await fetch("/api/executeQuery", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({query})
@@ -73,7 +73,7 @@ document.addEventListener("click", (e) => {
         const tableName = document.getElementById("tableSelect").value;
 
         if (rowId && tableName) {
-            fetch(`/api/get/tables/${tableName}/${rowId}`, {method: "DELETE"})
+            fetch(`/api/delete/tables/${tableName}/${rowId}`, {method: "DELETE"})
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -97,7 +97,7 @@ document.addEventListener("click", (e) => {
     if (e.target.classList.contains("delete-table")) {
         const tableName = e.target.dataset.tableName;
         if (tableName) {
-            fetch(`/api/get/tables/${tableName}`, {method: "DELETE"})
+            fetch(`/api/delete/tables/${tableName}`, {method: "DELETE"})
                 .then(response => response.json())
                 .then(data => {
                     if (data.message) {
@@ -177,12 +177,6 @@ function updateConnectionStatus(apiStatus, dbStatus) {
     indicator.style.backgroundColor = apiStatus && dbStatus ? "green" : "red";
 }
 
-fetch('/api/health')
-    .then(res => res.json())
-    .then(data => {
-        updateConnectionStatus(data.status);
-    });
-
 async function checkConnection() {
     try {
         const response = await fetch('/api/status', {method: 'GET'});
@@ -245,7 +239,7 @@ function deleteRow(rowId) {
         return;
     }
 
-    fetch(`/api/get/tables/${tableName}/${rowId}`, {method: "DELETE"})
+    fetch(`/api/delete/tables/${tableName}/${rowId}`, {method: "DELETE"})
         .then(response => response.json())
         .then(data => {
             if (data.message) {
