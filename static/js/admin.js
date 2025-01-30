@@ -168,10 +168,10 @@ function updateConnectionStatus(apiStatus, dbStatus) {
     const dbStatusEl = document.getElementById('databaseStatus');
     const indicator = document.querySelector(".status-indicator");
 
-    statusEl.textContent = apiStatus ? 'Connected' : 'Disconnected';
+    statusEl.textContent = apiStatus ? 'Database' : 'Database';
     statusEl.style.color = apiStatus ? 'var(--success)' : 'red';
 
-    dbStatusEl.textContent = dbStatus ? 'Database Connected' : 'Database Disconnected';
+    dbStatusEl.textContent = dbStatus ? ' Connected' : ' Disconnected';
     dbStatusEl.style.color = dbStatus ? 'var(--success)' : 'red';
 
     indicator.style.backgroundColor = apiStatus && dbStatus ? "green" : "red";
