@@ -67,306 +67,537 @@ and whether admin access is required as well as rate limits.
 
 ---
 
-### `/api/executeQuery`
+### `executeQuery`
+
+- **URL:** `/api/executeQuery`
 - **Method:** POST
-- **Description:** Executes raw SQL queries (Select, Insert, Update, Delete).
+- **Description:** Executes a SQL query on the database.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
-- **Plug and Play?:** ❌ (Requires POST request with JSON body)
+- **Plug and Play?:** ❌ (Requires an HTTP request with a JSON payload)
 - **Request Body Preview:**
   ```json
   {
     "query": "SELECT * FROM users"
   }
   ```
-- **Response Preview:**
-  ```json
-  {
-    "message": "Query executed successfully"
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "id": 1,
+       "username": "example_user",
+       "email": "user@example.com"
+     }
+     ```
+  - `#400`:
+     ```json
+     {
+       "error": "No query provided"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Query Execution Failed - API execute_query"
+     }
+     ```
 
 ---
 
-### `/api/status`
+### `api_status`
+
+- **URL:** `/api/status`
 - **Method:** GET
-- **Description:** Checks API status and database connection.
+- **Description:** Checks if the API is running and verifies database connectivity.
 - **Admin?:** 🔓
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✅
-- **Response Preview:**
-  ```json
-  {
-    "status": "API is running",
-    "uptime_seconds": 12345,
-    "database_connected": true
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "status": "API is running",
+       "uptime_seconds": 12345.67,
+       "database_connected": true
+     }
+     ```
 
 ---
 
-### `/api/download/<challenge_id>`
+### `download_challenge_files`
+
+- **URL:** `/api/download/<challenge_id>`
 - **Method:** GET
-- **Description:** Downloads challenge files by ID (e.g., bin, images, pcap).
+- **Description:** Downloads challenge zip files.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 5 requests/hour
 - **Plug and Play?:** ✔️ (Browser-accessible if challenge exists, must be signed in)
-- **Response Preview:** Download file (`.zip` file) or error message (No return in JSON)
+- **Response preview**
+  - `#200`: *(Binary file download)*
+  - `#404`:
+     ```json
+     {
+       "error": "Challenge files not found"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to fetch challenge files"
+     }
+     ```
 
 ---
 
-### `/api/get/size`
+### `get_db_size`
+
+- **URL:** `/api/get/size`
 - **Method:** GET
-- **Description:** Retrieves the size of the current database.
+- **Description:** Fetches the current database size in a human-readable format.
 - **Admin?:** 🔓
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✅
-- **Response Preview:**
-  ```json
-  {
-    "size": "10 MB"
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "size": "24 MB"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get database size"
+     }
+     ```
 
 ---
 
-### `/api/get/activeConnections`
+### `get_active_connections`
+
+- **URL:** `/api/get/activeConnections`
 - **Method:** GET
-- **Description:** Returns the count of active database connections.
+- **Description:** Fetches the number of currently active database connections.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 60 requests/hour
 - **Plug and Play?:** ✅
-- **Response Preview:**
-  ```json
-  {
-    "activeConnections": 5
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "activeConnections": 12
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get active connections"
+     }
+     ```
 
 ---
 
-### `/api/get/allTeams`
+### `view_teams`
+
+- **URL:** `/api/get/allTeams`
 - **Method:** GET
-- **Description:** Retrieves all teams' IDs, names, and scores.
+- **Description:** Fetches all teams with their scores.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 60 requests/hour
 - **Plug and Play?:** ✅
-- **Response Preview:**
-  ```json
-  [
-    {
-      "id": 1,
-      "team_name": "Team A",
-      "score": 100
-    },
-    {
-      "id": 2,
-      "team_name": "Team B",
-      "score": 90
-    }
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {
+         "id": 1,
+         "team_name": "Team Alpha",
+         "score": 150
+       },
+       {
+         "id": 2,
+         "team_name": "Team Beta",
+         "score": 100
+       }
+     ]
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get all teams"
+     }
+     ```
 
 ---
 
-### `/api/get/challengesProgress`
+### `get_challenge_progress`
+
+- **URL:** `/api/get/challengesProgress`
 - **Method:** GET
-- **Description:** Retrieves a logged-in team's challenge progress (including flags and score).
+- **Description:** Fetches the progress of challenges for the logged-in team.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 50 requests/hour
-- **Plug and Play?:** ✔️ (Requires session with logged-in user)
-- **Response Preview:**
-  ```json
-  [
-    {
-      "challenge_id": "bin",
-      "flag_submitted": true,
-      "score": 20
-    }
-  ]
-  ```
+- **Plug and Play?:** ✔️ (User must be logged in)
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {
+         "challenge_id": 1,
+         "flag_submitted": true,
+         "score": 50
+       },
+       {
+         "challenge_id": 2,
+         "flag_submitted": false,
+         "score": 0
+       }
+     ]
+     ```
+  - `#401`:
+     ```json
+     {
+       "error": "User not logged in"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "An error occurred - Function get_challenge_progress"
+     }
+     ```
 
 ---
 
-### `/api/get/leaderboard`
+### `get_leaderboard`
+
+- **URL:** `/api/get/leaderboard`
 - **Method:** GET
-- **Description:** Retrieves the leaderboard with pagination.
+- **Description:** Retrieves the leaderboard with paginated results.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 30 requests/hour
 - **Plug and Play?:** ✅ (Pagination query parameters needed)
-- **Response Preview:**
-  ```json
-  [
-    {
-      "team_name": "Team A",
-      "score": 100
-    },
-    {
-      "team_name": "Team B",
-      "score": 90
-    }
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {
+         "team_name": "Team Alpha",
+         "score": 300
+       },
+       {
+         "team_name": "Team Beta",
+         "score": 250
+       }
+     ]
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get leaderboard"
+     }
+     ```
 
 ---
 
-### `/api/get/tables`
+I'll continue with the documentation in the same format.
+
+---
+
+### `get_tables`
+
+- **URL:** `/api/get/tables`
 - **Method:** GET
-- **Description:** Retrieves all database table names (Admin only).
+- **Description:** Retrieves a list of all tables in the database.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  ["teams", "users"]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     ["users", "teams", "challenges"]
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Getting the tables failed"
+     }
+     ```
 
 ---
 
-### `/api/get/tables/<table_name>`
+### `get_table_rows`
+
+- **URL:** `/api/get/tables/<table_name>`
 - **Method:** GET
-- **Description:** Retrieves all rows from a specific table (Admin only).
+- **Description:** Retrieves up to 100 rows from a specific table.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  [
-    [1, "Team A", 100],
-    [2, "Team B", 90]
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {"id": 1, "username": "admin", "email": "admin@example.com"},
+       {"id": 2, "username": "user1", "email": "user1@example.com"}
+     ]
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Getting the table rows failed"
+     }
+     ```
 
 ---
 
-### `/api/get/tables/<table_name>/schema`
+### `get_table_schema`
+
+- **URL:** `/api/get/tables/<table_name>/schema`
 - **Method:** GET
-- **Description:** Retrieves the schema of a specific table (Admin only).
+- **Description:** Retrieves the schema of a given table.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  [
-    {"column_name": "id", "data_type": "integer"},
-    {"column_name": "team_name", "data_type": "text"}
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {"column_name": "id", "data_type": "integer"},
+       {"column_name": "username", "data_type": "text"},
+       {"column_name": "email", "data_type": "text"}
+     ]
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Getting the table schema failed"
+     }
+     ```
 
 ---
 
-### `/api/delete/tables/<table_name>/<int:row_id>`
+### `delete_table_item`
+
+- **URL:** `/api/delete/tables/<table_name>/<row_id>`
 - **Method:** DELETE
-- **Description:** Deletes a specific row from a table (Admin only).
+- **Description:** Deletes a specific row from a table based on its ID.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  {
-    "message": "Item deleted successfully."
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "message": "Item deleted successfully."
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Deleting the table item failed"
+     }
+     ```
 
 ---
 
-### `/api/delete/tables/<table_name>`
+### `delete_table`
+
+- **URL:** `/api/delete/tables/<table_name>`
 - **Method:** DELETE
-- **Description:** Deletes an entire table (Admin only).
+- **Description:** Deletes an entire table from the database.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  {
-    "message": "Table deleted successfully."
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "message": "Table deleted successfully."
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Deleting the table failed"
+     }
+     ```
 
 ---
 
-### `/api/delete/database`
+### `delete_database`
+
+- **URL:** `/api/delete/database`
 - **Method:** POST
-- **Description:** Deletes the entire database (Admin only).
+- **Description:** Deletes the entire database (users and teams tables).
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response Preview:**
-  ```json
-  {
-    "message": "Database deleted successfully."
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "message": "Database deleted successfully."
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Deleting the database failed"
+     }
+     ```
 
 ---
 
-### `/api/get/user/profile`
+### `get_user_profile`
+
+- **URL:** `/api/get/user/profile`
 - **Method:** GET
-- **Description:** Retrieves the profile of the logged-in user (team name, score, etc.).
+- **Description:** Fetches the logged-in user's profile data.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 100 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
-- **Response Preview:**
-  ```json
-  {
-    "team_name": "Team A",
-    "score": 100,
-    "flags_submitted": ["flag1", "flag2"]
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "team_name": "Team Alpha",
+       "score": 150,
+       "flags_submitted": ["flag{example1}", "flag{example2}"]
+     }
+     ```
+  - `#401`:
+     ```json
+     {
+       "error": "User not logged in"
+     }
+     ```
+  - `#404`:
+     ```json
+     {
+       "error": "User not found"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get user profile"
+     }
+     ```
 
 ---
 
-### `/api/get/user/rank`
+### `get_team_rank`
+
+- **URL:** `/api/get/user/rank`
 - **Method:** GET
-- **Description:** Retrieves the rank of the logged-in team.
+- **Description:** Fetches the rank of the logged-in team.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 20 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
-- **Response Preview:**
-  ```json
-  {
-    "rank": 1,
-    "next_team_score": 90
-  }
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     {
+       "rank": 3,
+       "next_team_score": 250
+     }
+     ```
+  - `#401`:
+     ```json
+     {
+       "error": "User not logged in"
+     }
+     ```
+  - `#404`:
+     ```json
+     {
+       "error": "Team not found"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get team rank"
+     }
+     ```
 
 ---
 
-### `/api/get/user/history`
+### `get_team_history`
+
+- **URL:** `/api/get/user/history`
 - **Method:** GET
-- **Description:** Retrieves the history of a team's score and flag submissions.
+- **Description:** Fetches the history of a logged-in team’s progress.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 50 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
-- **Response Preview:**
-  ```json
-  [
-    {
-      "timestamp": "2025-01-01T12:00:00Z",
-      "flags_submitted": ["flag1"],
-      "score": 100
-    }
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {
+         "timestamp": "2025-01-30T14:23:00Z",
+         "flags_submitted": ["flag{example3}"],
+         "score": 50
+       },
+       {
+         "timestamp": "2025-01-29T10:15:00Z",
+         "flags_submitted": ["flag{example1}", "flag{example2}"],
+         "score": 100
+       }
+     ]
+     ```
+  - `#404`:
+     ```json
+     {
+       "message": "No history found for the team"
+     }
+     ```
+  - `#500`:
+     ```json
+     {
+       "error": "Failed to get team history"
+     }
+     ```
 
 ---
 
-### `/api/get/user/submissions`
+### `get_submission_history`
+
+- **URL:** `/api/get/user/submissions`
 - **Method:** GET
-- **Description:** Retrieves the history of a team's flag submissions.
+- **Description:** Fetches the logged-in team's flag submission history.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 100 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
-- **Response Preview:**
-  ```json
-  [
-    {
-      "flag": "flag1",
-      "timestamp": "2025-01-01T12:00:00Z"
-    }
-  ]
-  ```
+- **Response preview**
+  - `#200`:
+     ```json
+     [
+       {
+         "flag": "flag{example1}",
+         "timestamp": "2025-01-30T12:00:00Z"
+       },
+       {
+         "flag": "flag{example2}",
+         "timestamp": "2025-01-29T08:45:00Z"
+       }
+     ]
+     ```
+    - `#404`:
+       ```json
+       {
+         "message": "No submissions found for the team"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get submission history"
+       }
+       ```
 
 ---
 
