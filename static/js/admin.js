@@ -62,9 +62,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 .then(data => {
                     activeConnections.textContent = data.activeConnections;
                 })
-                .catch(error => console.error("Error fetching data:", error));
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error fetching data: ' + error,
+                    });
+                    console.error("Error fetching data:", error);
+                });
         })
-        .catch(error => console.error("Error fetching tables:", error));
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error fetching tables: ' + error,
+            });
+            console.error("Error fetching tables:", error);
+        });
 });
 
 document.addEventListener("click", (e) => {
@@ -142,14 +156,29 @@ function deleteTeam(id) {
             })
                 .then(response => response.json())
                 .then(data => {
+                    if (data.error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.error,
+                        });
+                    } else {
                     Swal.fire({
                         icon: 'success',
                         title: 'Deleted!',
                         text: data.message,
                     });
                     location.reload(); // Refresh to show updated records
+                    }
                 })
-                .catch(error => console.error("Error deleting team:", error));
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error deleting team: ' + error,
+                    });
+                    console.error("Error deleting team:", error);
+                });
         }
     });
 }
@@ -199,6 +228,11 @@ async function init() {
     try {
         await checkConnection();
     } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Initialization failed',
+            text: error.message,
+        });
         console.error('Initialization failed:', error);
         updateConnectionStatus(false);
     }
@@ -257,7 +291,14 @@ function deleteRow(rowId) {
                 });
             }
         })
-        .catch(error => console.error("Error deleting row:", error));
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error deleting row: ' + error,
+            });
+            console.error("Error deleting row:", error);
+        });
 }
 
 async function populateTableDropdown() {
@@ -283,7 +324,14 @@ function fetchTables() {
                 tableSelect.innerHTML += `<option value="${table}">${table}</option>`;
             });
         })
-        .catch(error => console.error("Error fetching tables:", error));
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error fetching tables: ' + error,
+            });
+            console.error("Error fetching tables:", error);
+        });
 }
 
 function fetchTableData(tableName) {
@@ -298,7 +346,14 @@ function fetchTableData(tableName) {
                 </tr>
             `).join("");
         })
-        .catch(error => console.error("Error fetching table data:", error));
+        .catch(error => {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Error fetching table data: ' + error,
+            });
+            console.error("Error fetching table data:", error);
+        });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

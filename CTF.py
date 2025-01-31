@@ -61,7 +61,8 @@ def admin_required(param: callable):
                 return redirect(url_for('signin'))
             if session['team_name'] != 'ADMIN':
                 abort(403,
-                      description=jsonify({"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}))
+                      description=jsonify(
+                          {"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}))
             return param(*args, **kwargs)
         except Exception:
             abort(500, description=jsonify({"error": "Internal Server Error - Admin Required Decorator"}))
@@ -81,18 +82,18 @@ def rate_limit(limit: int, time_window: int = 3600):
             try:
                 user_ip = request.remote_addr
                 current_time = time.time()
-    
+
                 # Ensure user IP is in the request store
                 if user_ip not in request_store:
                     request_store[user_ip] = []
-    
+
                 timestamps = request_store[user_ip]
                 valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
                 request_store[user_ip] = valid_timestamps
-    
+
                 if len(valid_timestamps) >= limit:
                     abort(429, description=jsonify({"error": "Rate limit exceeded. Try again later."}))
-    
+
                 request_store[user_ip].append(current_time)
                 return func(*args, **kwargs)
             except Exception:
@@ -154,51 +155,63 @@ def api_status():
 def download_challenge_files(challenge_id: str):
     # Ensure the challenge_id is valid (you can expand this with your own validation logic)
     if challenge_id not in ["bin", "images", "pcap"]:
-        return jsonify({"error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"}), 404
+        return abort(404, jsonify({"error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"}))
 
     # Assuming challenge files are stored in a directory called 'challenge'
     challenge_file_path = f"src/assets/{challenge_id}.zip"
 
     if os.path.exists(challenge_file_path):
-        return send_from_directory('src/assets', f"{challenge_id}.zip", as_attachment=True), 200
+        try:
+            return send_from_directory('src/assets', f"{challenge_id}.zip", as_attachment=True), 200
+        except Exception:
+            return abort(500, jsonify({"error": "Failed to fetch challenge files"}))
     else:
-        return jsonify({"error": "Challenge files not found"}), 404
+        return abort(404, jsonify({"error": "Challenge files not found"}))
 
 
 # --------------------------- GET ------------------------------#
 @app.route('/api/get/size', methods=['GET'])
 def get_db_size():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database())) AS size")
-    size = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
-    return jsonify({"size": size}), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT pg_size_pretty(pg_database_size(current_database())) AS size")
+        size = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        return jsonify({"size": size}), 200
+    except Exception:
+        return jsonify({"error": "Failed to get database size"}), 500
 
 
 @app.route('/api/get/activeConnections', methods=['GET'])
 @rate_limit(limit=60)
 def get_active_connections():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND pid <> pg_backend_pid()")
-    active_connections = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
-    return jsonify({"activeConnections": active_connections}), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active' AND pid <> pg_backend_pid()")
+        active_connections = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        return jsonify({"activeConnections": active_connections}), 200
+    except Exception:
+        return jsonify({"error": "Failed to get active connections"}), 500
 
 
 @app.route('/api/get/allTeams', methods=['GET'])
 @rate_limit(limit=60)
 def view_teams():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT id, team_name, score FROM teams')
-    teams = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return jsonify(teams), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, team_name, score FROM teams')
+        teams = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(teams), 200
+    except Exception:
+        return jsonify({"error": "Failed to get all teams"}), 500
 
 
 @app.route('/api/get/challengesProgress', methods=['GET'])
@@ -249,46 +262,52 @@ def get_challenge_progress():
 @app.route('/api/get/leaderboard', methods=['GET'])
 @rate_limit(limit=30)
 def get_leaderboard():
-    page = int(request.args.get('page', 1))  # Default to page 1
-    per_page = int(request.args.get('per_page', 10))  # Default to 10 teams per page
+    try:
+        page = int(request.args.get('page', 1))  # Default to page 1
+        per_page = int(request.args.get('per_page', 10))  # Default to 10 teams per page
 
-    # Calculate offset for pagination
-    offset = (page - 1) * per_page
+        # Calculate offset for pagination
+        offset = (page - 1) * per_page
 
-    # Fetch leaderboard data from the database
-    conn = get_db_connection()
+        # Fetch leaderboard data from the database
+        conn = get_db_connection()
 
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT team_name, score 
-        FROM teams
-        ORDER BY score DESC
-        LIMIT %s OFFSET %s
-    """, (per_page, offset))
-    leaderboard_local = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT team_name, score 
+            FROM teams
+            ORDER BY score DESC
+            LIMIT %s OFFSET %s
+        """, (per_page, offset))
+        leaderboard_local = cursor.fetchall()
+        cursor.close()
+        conn.close()
 
-    return jsonify([{"team_name": team_name, "score": score} for team_name, score in leaderboard_local]), 200
+        return jsonify([{"team_name": team_name, "score": score} for team_name, score in leaderboard_local]), 200
+    except Exception:
+        return jsonify({"error": "Failed to get leaderboard"}), 500
 
 
 # ------------------------ GET/Tables --------------------------#
 @app.route('/api/get/tables', methods=['GET'])
 @admin_required
 def get_tables():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT table_name
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-        AND table_name NOT LIKE 'pg_%'
-        AND table_name NOT LIKE 'sql_%'
-    """)
-    tables = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return jsonify([table[0] for table in tables]), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT table_name
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            AND table_name NOT LIKE 'pg_%'
+            AND table_name NOT LIKE 'sql_%'
+        """)
+        tables = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify([table[0] for table in tables]), 200
+    except Exception:
+        return jsonify({"error": "Getting the tables failed"}), 500
 
 
 @app.route('/api/get/tables/<table_name>', methods=['GET'])
@@ -312,17 +331,20 @@ def get_table_rows(table_name: str):
 @app.route('/api/get/tables/<table_name>/schema', methods=['GET'])
 @admin_required
 def get_table_schema(table_name: str):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = %s
-    """, (table_name,))
-    schema = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return jsonify(schema), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = %s
+        """, (table_name,))
+        schema = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(schema), 200
+    except Exception:
+        return jsonify({"error": "Getting the table schema failed"}), 500
 
 
 # ------------------------- DELETE ----------------------------#
@@ -365,163 +387,178 @@ def delete_table(table_name: str):
 @app.route('/api/delete/database', methods=['POST'])
 @admin_required
 def delete_database():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS users")
-    cursor.execute("DROP TABLE IF EXISTS teams")
-    conn.commit()
-    cursor.close()
-    conn.close()
-    return jsonify({"message": "Database deleted successfully."}), 200
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DROP TABLE IF EXISTS users")
+        cursor.execute("DROP TABLE IF EXISTS teams")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": "Database deleted successfully."}), 200
+    except Exception:
+        return jsonify({"error": "Deleting the database failed"}), 500
 
 
 # ------------------------ GET/User ---------------------------#
 @app.route('/api/get/user/profile', methods=['GET'])
 @rate_limit(limit=100)
 def get_user_profile():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
+    try:
+        if 'team_name' not in session:
+            return jsonify({"error": "User not logged in"}), 401
 
-    team_name = session['team_name']
+        team_name = session['team_name']
 
-    # Fetch user profile data from the database
-    conn = get_db_connection()
+        # Fetch user profile data from the database
+        conn = get_db_connection()
 
-    cursor = conn.cursor()
-    cursor.execute('SELECT team_name, score, flags_submitted FROM teams WHERE team_name = %s', (team_name,))
-    result = cursor.fetchone()
-    cursor.close()
-    conn.close()
+        cursor = conn.cursor()
+        cursor.execute('SELECT team_name, score, flags_submitted FROM teams WHERE team_name = %s', (team_name,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
 
-    if result:
-        team_name, score, flags_submitted = result
-        return jsonify({
-            "team_name": team_name,
-            "score": score,
-            "flags_submitted": flags_submitted.split(',')
-        }), 200
-    else:
-        return jsonify({"error": "User not found"}), 404
+        if result:
+            team_name, score, flags_submitted = result
+            return jsonify({
+                "team_name": team_name,
+                "score": score,
+                "flags_submitted": flags_submitted.split(',')
+            }), 200
+        else:
+            return jsonify({"error": "User not found"}), 404
+    except Exception:
+        return jsonify({"error": "Failed to get user profile"}), 500
 
 
 @app.route('/api/get/user/rank', methods=['GET'])
 @rate_limit(limit=20)
 def get_team_rank():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
+    try:
+        if 'team_name' not in session:
+            return jsonify({"error": "User not logged in"}), 401
 
-    team_name = session['team_name']
+        team_name = session['team_name']
 
-    # Fetch the team's score and rank from the database
-    conn = get_db_connection()
+        # Fetch the team's score and rank from the database
+        conn = get_db_connection()
 
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT team_name, score 
-        FROM teams 
-        ORDER BY score DESC
-    """)
-    teams = cursor.fetchall()
-    cursor.close()
-    conn.close()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT team_name, score 
+            FROM teams 
+            ORDER BY score DESC
+        """)
+        teams = cursor.fetchall()
+        cursor.close()
+        conn.close()
 
-    # Calculate the rank of the logged-in team
-    rank = next((i + 1 for i, (name, score) in enumerate(teams) if name == team_name), None)
+        # Calculate the rank of the logged-in team
+        rank = next((i + 1 for i, (name, score) in enumerate(teams) if name == team_name), None)
 
-    if rank:
-        # Find the score of the next team to compare
-        next_team_score = teams[rank] if rank < len(teams) else None
-        return jsonify({"rank": rank, "next_team_score": next_team_score}), 200
-    else:
-        return jsonify({"error": "Team not found"}), 404
+        if rank:
+            # Find the score of the next team to compare
+            next_team_score = teams[rank] if rank < len(teams) else None
+            return jsonify({"rank": rank, "next_team_score": next_team_score}), 200
+        else:
+            return jsonify({"error": "Team not found"}), 404
+    except Exception:
+        return jsonify({"error": "Failed to get team rank"}), 500
 
 
 @app.route('/api/get/user/history', methods=['GET'])
 @rate_limit(limit=50)
 def get_team_history():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
-
-    team_name = session['team_name']
-
     try:
-        conn = get_db_connection()
+        if 'team_name' not in session:
+            return jsonify({"error": "User not logged in"}), 401
 
-        cursor = conn.cursor()
+        team_name = session['team_name']
 
-        cursor.execute("""
-            SELECT timestamp, flags_submitted, score 
-            FROM team_history
-            WHERE team_name = %s
-            ORDER BY timestamp DESC
-        """, (team_name,))
+        try:
+            conn = get_db_connection()
 
-        history = cursor.fetchall()
+            cursor = conn.cursor()
 
-        if not history:
-            return jsonify({"message": "No history found for the team"}), 404
+            cursor.execute("""
+                SELECT timestamp, flags_submitted, score 
+                FROM team_history
+                WHERE team_name = %s
+                ORDER BY timestamp DESC
+            """, (team_name,))
 
-        history_data = [
-            {
-                "timestamp": timestamp,
-                "flags_submitted": flags_submitted.split(",") if flags_submitted else [],
-                "score": score
-            }
-            for timestamp, flags_submitted, score in history
-        ]
+            history = cursor.fetchall()
 
-        return jsonify(history_data), 200
+            if not history:
+                return jsonify({"message": "No history found for the team"}), 404
 
-    except DatabaseError:
-        return jsonify({"error": "Database error - Getting team history"}), 500
+            history_data = [
+                {
+                    "timestamp": timestamp,
+                    "flags_submitted": flags_submitted.split(",") if flags_submitted else [],
+                    "score": score
+                }
+                for timestamp, flags_submitted, score in history
+            ]
+
+            return jsonify(history_data), 200
+
+        except DatabaseError:
+            return jsonify({"error": "Database error - Getting team history"}), 500
+        except Exception:
+            return jsonify({"error": "An error occurred - Getting team history"}), 500
+
+        finally:
+            cursor.close()
+            conn.close()
     except Exception:
-        return jsonify({"error": "An error occurred - Getting team history"}), 500
-
-    finally:
-        cursor.close()
-        conn.close()
+        return jsonify({"error": "Failed to get team history"}), 500
 
 
 @app.route('/api/get/user/submissions', methods=['GET'])
 @rate_limit(limit=100)
 def get_submission_history():
-    if 'team_name' not in session:
-        return jsonify({"error": "User not logged in"}), 401
-
-    team_name = session['team_name']
-
     try:
-        conn = get_db_connection()
+        if 'team_name' not in session:
+            return jsonify({"error": "User not logged in"}), 401
 
-        cursor = conn.cursor()
+        team_name = session['team_name']
 
-        cursor.execute("""
-            SELECT flag, timestamp 
-            FROM flag_submissions
-            WHERE team_name = %s
-            ORDER BY timestamp DESC
-        """, (team_name,))
+        try:
+            conn = get_db_connection()
 
-        submissions = cursor.fetchall()
+            cursor = conn.cursor()
 
-        if not submissions:
-            return jsonify({"message": "No submissions found for the team"}), 404
+            cursor.execute("""
+                SELECT flag, timestamp 
+                FROM flag_submissions
+                WHERE team_name = %s
+                ORDER BY timestamp DESC
+            """, (team_name,))
 
-        submission_data = [
-            {"flag": flag, "timestamp": timestamp}
-            for flag, timestamp in submissions
-        ]
+            submissions = cursor.fetchall()
 
-        return jsonify(submission_data), 200
+            if not submissions:
+                return jsonify({"message": "No submissions found for the team"}), 404
 
-    except DatabaseError:
-        return jsonify({"error": "Database error - Get submission history"}), 500
+            submission_data = [
+                {"flag": flag, "timestamp": timestamp}
+                for flag, timestamp in submissions
+            ]
+
+            return jsonify(submission_data), 200
+
+        except DatabaseError:
+            return jsonify({"error": "Database error - Get submission history"}), 500
+        except Exception:
+            return jsonify({"error": "An error occurred - Get submission history"}), 500
+
+        finally:
+            cursor.close()
+            conn.close()
     except Exception:
-        return jsonify({"error": "An error occurred - Get submission history"}), 500
-
-    finally:
-        cursor.close()
-        conn.close()
+        return jsonify({"error": "Failed to get submission history"}), 500
 
 
 # ------------------------ END APIs ------------------------- #
@@ -531,7 +568,12 @@ def get_submission_history():
 
 @app.route('/favicon.ico', methods=['GET'])
 def get_favicon():
-    return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon'), 200
+    try:
+        return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon'), 200
+    except FileNotFoundError:
+        return abort(404, jsonify({"error": "Favicon not found"}))
+    except Exception:
+        return abort(500, jsonify({"error": "Internal Server Error - Favicon"}))
 
 
 @app.route('/retry/<url_to_check>', methods=['POST'])
@@ -711,7 +753,8 @@ def cryptography():
                 return render_template_string(COMP_TEMPLATE, challenge=1, error="Incorrect decryption.",
                                               description=description, encrypted=encrypted_message), 400
 
-        return render_template_string(COMP_TEMPLATE, challenge=1, description=description, encrypted=encrypted_message), 200
+        return render_template_string(COMP_TEMPLATE, challenge=1, description=description,
+                                      encrypted=encrypted_message), 200
     except Exception:
         abort(500, jsonify({"error": "Internal Server Error - Challenge 1"}))
 

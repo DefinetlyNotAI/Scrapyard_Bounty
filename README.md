@@ -111,7 +111,7 @@ and whether admin access is required as well as rate limits.
 - **Admin?:** 🔓
 - **Rate Limit:** 🔥 5 requests/hour
 - **Plug and Play?:** ✔️ (Browser-accessible if challenge exists, must be signed in)
-- **Response Preview:** Download file (`.zip` file)
+- **Response Preview:** Download file (`.zip` file) or error message (No return in JSON)
 
 ---
 

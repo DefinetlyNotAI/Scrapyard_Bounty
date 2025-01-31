@@ -1,4 +1,6 @@
 // Generate random binary code in the background
+// noinspection JSUnresolvedReference
+
 function generateErrorCode() {
     const errorCode = document.querySelector('.error-code');
     setInterval(() => {
@@ -31,6 +33,11 @@ function retryConnection() {
                 return response.json();
             })
             .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Retry failed',
+                    text: error.message,
+                });
                 console.error('Retry failed:', error);
                 // Show a random error message if refresh fails
                 setTimeout(() => {
