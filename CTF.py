@@ -1,7 +1,9 @@
 import os
+import re
 import tempfile
 import time
 from functools import wraps
+from typing import List
 
 import psycopg2
 import requests
@@ -580,6 +582,10 @@ def get_favicon():
 @rate_limit(limit=60)
 def retry(url_to_check: str):
     try:
+        # Check if the URL is in the whitelist
+        # This is to prevent SSRF attacks, it works by checking if the URL matches any of the allowed URL patterns which are generated from the Flask URL rules
+        if not any(re.fullmatch(pattern, re.sub(r'^(https?://)?(www\.)?', '', url_to_check)) for pattern in allowed_urls()):
+            return jsonify({"error": "URL not in whitelist, This whitelist is to safeguard against SSRF attacks, Please contact developer in case you think this is wrong"}), 406
         response = requests.get(url_to_check)
         if response.status_code == 200:
             return jsonify({"message": "Retry successful"}), 200
@@ -590,6 +596,15 @@ def retry(url_to_check: str):
     except Exception:
         return jsonify({"message": "Retry failed after attempt."}), 500
 
+
+def allowed_urls() -> List[str]:
+    allowed = []
+    for rule in app.url_map.iter_rules():
+        url = "scrapyard-bounty.vercel.app" + str(rule)
+        # Convert Flask URL rules to regex patterns
+        url_pattern = re.sub(r'<[^>]+>', r'[^/]+', url)
+        allowed.append(url_pattern)
+    return allowed
 
 # ---------------------- ERROR HANDLERS --------------------- #
 
