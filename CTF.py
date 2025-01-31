@@ -356,8 +356,8 @@ def delete_table_item(table_name: str, row_id: int):
         conn = get_db_connection()
 
         cursor = conn.cursor()
-        query = f"DELETE FROM %s WHERE id = %s"
-        cursor.execute(query, (table_name, row_id))
+        query = sql.SQL("DELETE FROM {} WHERE id = %s").format(sql.Identifier(table_name))
+        cursor.execute(query, (row_id,))
         conn.commit()
         cursor.close()
         conn.close()
