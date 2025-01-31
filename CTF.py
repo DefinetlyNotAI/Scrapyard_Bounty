@@ -607,6 +607,12 @@ def page_not_found(e):
 
 
 # noinspection PyUnusedLocal
+@app.errorhandler(405)
+def page_not_found(e):
+    return render_template_string(ERROR_405_TEMPLATE), 405
+
+
+# noinspection PyUnusedLocal
 @app.errorhandler(429)
 def too_many_requests(e):
     return render_template_string(ERROR_429_TEMPLATE), 429
@@ -929,6 +935,9 @@ try:
 
     with open("src/html/error/404.html", "r") as f:
         ERROR_404_TEMPLATE = f.read()
+
+    with open("src/html/error/405.html", "r") as f:
+        ERROR_405_TEMPLATE = f.read()
 
     with open("src/html/error/429.html", "r") as f:
         ERROR_429_TEMPLATE = f.read()

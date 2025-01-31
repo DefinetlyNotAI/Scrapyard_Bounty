@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>405 Method Not Allowed</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/error.css') }}">
+</head>
+<body>
+<div class="container">
+  <h1>405 - Method Not Allowed</h1>
+  <div class="terminal">
+    <div class="terminal-header">$ NAVIGATION SYSTEM</div>
+    <p>ERROR: The requested method is not allowed for the URL</p>
+    <p>ANALYSIS: The HTTP method used is not supported by the server for the requested URL</p>
+    <p>Suggestion: Check the allowed methods for the URL or return to the homepage</p>
+  </div>
+  <div class="button-group challenges">
+    <a href="/">Return to Home</a>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/error.js') }}"></script>
+</body>
+</html>
