@@ -12,9 +12,11 @@
   <h1>404 - Page Not Found</h1>
   <div class="terminal">
     <div class="terminal-header">$ NAVIGATION SYSTEM</div>
-    <p>ERROR: The requested page could not be found</p>
-    <p>ANALYSIS: The URL you requested does not exist or has been moved</p>
-    <p>Suggestion: Double-check the URL or return to the homepage</p>
+    {% if error_message %}
+    <p><strong>Error Message:</strong> {{ error_message }}</p>
+    {% endif %}
+    <p><strong>Basic Analysis:</strong> The URL you requested does not exist or has been moved</p>
+    <p><strong>Suggestion:</strong> Double-check the URL or return to the homepage</p>
   </div>
   <div class="button-group challenges">
     <a href="/">Return to Home</a>

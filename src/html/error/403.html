@@ -12,9 +12,11 @@
   <h1>403 - Forbidden</h1>
   <div class="terminal">
     <div class="terminal-header">$ PERMISSION DENIED</div>
-    <p>ERROR: You don't have permission to access this resource</p>
-    <p>ANALYSIS: Your account lacks the necessary privileges for this action</p>
-    <p>Suggestion: Contact the administrator to request access</p>
+    {% if error_message %}
+    <p><strong>Error Message:</strong> {{ error_message }}</p>
+    {% endif %}
+    <p><strong>Basic Analysis:</strong> Your account lacks the necessary privileges for this action.</p>
+    <p><strong>Suggestion:</strong> Contact the administrator to request access.</p>
   </div>
   <div class="button-group challenges">
     <a href="/">Return to Home</a>

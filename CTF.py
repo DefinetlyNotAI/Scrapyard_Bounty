@@ -59,15 +59,13 @@ def admin_required(param: callable):
     def wrap(*args, **kwargs):
         try:
             if 'team_name' not in session:
-                print("User not signed in, redirecting now")
                 return redirect(url_for('signin'))
             if session['team_name'] != 'ADMIN':
                 abort(403,
-                      description=jsonify(
-                          {"error": f"Insufficient Permissions, User {session['team_name']} is not admin"}))
+                      description=f"Insufficient Permissions, User {session['team_name']} is not admin")
             return param(*args, **kwargs)
         except Exception:
-            abort(500, description=jsonify({"error": "Internal Server Error - Admin Required Decorator"}))
+            abort(500, description="Admin Required Decorator")
 
     wrap.__name__ = param.__name__
     return wrap
@@ -94,12 +92,12 @@ def rate_limit(limit: int, time_window: int = 3600):
                 request_store[user_ip] = valid_timestamps
 
                 if len(valid_timestamps) >= limit:
-                    abort(429, description=jsonify({"error": "Rate limit exceeded. Try again later."}))
+                    abort(429, description="Rate limit exceeded. Try again later.")
 
                 request_store[user_ip].append(current_time)
                 return func(*args, **kwargs)
             except Exception:
-                abort(500, description=jsonify({"error": "Internal Server Error - Rate Limit Decorator"}))
+                abort(500, description="Rate Limit Decorator")
 
         return wrapper
 
@@ -157,7 +155,7 @@ def api_status():
 def download_challenge_files(challenge_id: str):
     # Ensure the challenge_id is valid (you can expand this with your own validation logic)
     if challenge_id not in ["bin", "images", "pcap"]:
-        return abort(404, jsonify({"error": "Invalid challenge zip, available ['bin', 'images', 'pcap']"}))
+        return abort(404, description="Invalid challenge zip, available ['bin', 'images', 'pcap']")
 
     # Assuming challenge files are stored in a directory called 'challenge'
     challenge_file_path = f"src/assets/{challenge_id}.zip"
@@ -166,9 +164,9 @@ def download_challenge_files(challenge_id: str):
         try:
             return send_from_directory('src/assets', f"{challenge_id}.zip", as_attachment=True), 200
         except Exception:
-            return abort(500, jsonify({"error": "Failed to fetch challenge files"}))
+            return abort(500, description="Download Challenge Files Failed")
     else:
-        return abort(404, jsonify({"error": "Challenge files not found"}))
+        return abort(404, description="Challenge files not found")
 
 
 # --------------------------- GET ------------------------------#
@@ -573,9 +571,9 @@ def get_favicon():
     try:
         return send_from_directory('static', 'favicon.ico', mimetype='image/vnd.microsoft.icon'), 200
     except FileNotFoundError:
-        return abort(404, jsonify({"error": "Favicon not found"}))
+        return abort(404, description="Favicon not found")
     except Exception:
-        return abort(500, jsonify({"error": "Internal Server Error - Favicon"}))
+        return abort(500, description="Favicon fetching failed")
 
 
 @app.route('/retry/<url_to_check>', methods=['POST'])
@@ -588,6 +586,8 @@ def retry(url_to_check: str):
                    allowed_urls()):
             return jsonify({
                                "error": "URL not in whitelist, This whitelist is to safeguard against SSRF attacks, Please contact developer in case you think this is wrong"}), 406
+        if "retry" in url_to_check:
+            return jsonify({"error": "Invalid URL - You can't have the retry call have a retry call!"}), 400
         response = requests.get(url_to_check)
         if response.status_code == 200:
             return jsonify({"message": "Retry successful"}), 200
@@ -612,34 +612,29 @@ def allowed_urls() -> List[str]:
 # ---------------------- ERROR HANDLERS --------------------- #
 
 
-# noinspection PyUnusedLocal
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template_string(ERROR_403_TEMPLATE), 403
+    return render_template_string(ERROR_403_TEMPLATE, error_message=e.description), 403
 
 
-# noinspection PyUnusedLocal
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template_string(ERROR_404_TEMPLATE), 404
+    return render_template_string(ERROR_404_TEMPLATE, error_message=e.description), 404
 
 
-# noinspection PyUnusedLocal
 @app.errorhandler(405)
 def page_not_found(e):
-    return render_template_string(ERROR_405_TEMPLATE), 405
+    return render_template_string(ERROR_405_TEMPLATE, error_message=e.description), 405
 
 
-# noinspection PyUnusedLocal
 @app.errorhandler(429)
 def too_many_requests(e):
-    return render_template_string(ERROR_429_TEMPLATE), 429
+    return render_template_string(ERROR_429_TEMPLATE, error_message=e.description), 429
 
 
-# noinspection PyUnusedLocal
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template_string(ERROR_500_TEMPLATE), 500
+    return render_template_string(ERROR_500_TEMPLATE, error_message=e.description), 500
 
 
 # -------------------------- PAGES -------------------------- #
@@ -664,12 +659,11 @@ def transactions():
     try:
         response = requests.get('https://hcb.hackclub.com/api/v3/organizations/scrapyard-sharjah/transactions')
         if response.status_code != 200:
-            print(response.status_code)
-            return abort(response.status_code, jsonify({"error": "Internal Server Error - Transactions"}))
+            return abort(response.status_code, description="Transactions API failed (External -> HCB)")
         transaction = response.json()
         return render_template_string(TRANSACTIONS_TEMPLATE, transactions=transaction), 200
     except Exception:
-        return abort(500, jsonify({"error": "Internal Server Error - Transactions"}))
+        return abort(500, description="Transactions")
 
 
 @app.route('/signin', methods=['GET', 'POST'])
@@ -793,7 +787,7 @@ def cryptography():
         return render_template_string(COMP_TEMPLATE, challenge=1, description=description,
                                       encrypted=encrypted_message), 200
     except Exception:
-        abort(500, jsonify({"error": "Internal Server Error - Challenge 1"}))
+        abort(500, description="Challenge 1")
 
 
 # Challenge 2: Web Exploitation
@@ -824,7 +818,7 @@ def weblogin():
 
         return render_template_string(COMP_TEMPLATE, challenge=2, description=description), 200
     except Exception:
-        abort(500, jsonify({"error": "Internal Server Error - Challenge 2"}))
+        abort(500, description="Challenge 2")
 
 
 # Challenge 3: Reverse Engineering
@@ -855,7 +849,7 @@ def binary():
 
         return render_template_string(COMP_TEMPLATE, challenge=3, description=description), 200
     except Exception:
-        abort(500, jsonify({"error": "Internal Server Error - Challenge 3"}))
+        abort(500, description="Challenge 3")
 
 
 # Challenge 4: Forensics
@@ -897,7 +891,7 @@ def forensics():
 
         return render_template_string(COMP_TEMPLATE, challenge=4, description=description), 200
     except Exception:
-        abort(500, jsonify({"error": "Internal Server Error - Challenge 4"}))
+        abort(500, description="Challenge 4")
 
 
 # Challenge 5: Steganography
@@ -930,7 +924,7 @@ def steganography():
                                               error="Hidden flag not found or Line number incorrect.",
                                               description=description), 400
         except Exception:
-            abort(500, jsonify({"error": "Internal Server Error - Challenge 5"}))
+            abort(500, description="Challenge 5")
 
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
@@ -979,8 +973,10 @@ try:
 
     with open("src/html/error/500.html", "r") as f:
         ERROR_500_TEMPLATE = f.read()
+except FileNotFoundError:
+    abort(404, description="HTML Templates not found")
 except Exception:
-    abort(500, jsonify({"error": "Internal Server Error - HTML Templates failed to load"}))
+    abort(500, description="HTML Templates failed to load")
 
 # ------------------------- MAIN APP ------------------------- #
 
