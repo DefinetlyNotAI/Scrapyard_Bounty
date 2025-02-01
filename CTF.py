@@ -584,8 +584,10 @@ def retry(url_to_check: str):
     try:
         # Check if the URL is in the whitelist
         # This is to prevent SSRF attacks, it works by checking if the URL matches any of the allowed URL patterns which are generated from the Flask URL rules
-        if not any(re.fullmatch(pattern, re.sub(r'^(https?://)?(www\.)?', '', url_to_check)) for pattern in allowed_urls()):
-            return jsonify({"error": "URL not in whitelist, This whitelist is to safeguard against SSRF attacks, Please contact developer in case you think this is wrong"}), 406
+        if not any(re.fullmatch(pattern, re.sub(r'^(https?://)?(www\.)?', '', url_to_check)) for pattern in
+                   allowed_urls()):
+            return jsonify({
+                               "error": "URL not in whitelist, This whitelist is to safeguard against SSRF attacks, Please contact developer in case you think this is wrong"}), 406
         response = requests.get(url_to_check)
         if response.status_code == 200:
             return jsonify({"message": "Retry successful"}), 200
@@ -605,6 +607,7 @@ def allowed_urls() -> List[str]:
         url_pattern = re.sub(r'<[^>]+>', r'[^/]+', url)
         allowed.append(url_pattern)
     return allowed
+
 
 # ---------------------- ERROR HANDLERS --------------------- #
 
@@ -654,6 +657,19 @@ def home():
 @admin_required
 def admin():
     return render_template_string(ADMIN_TEMPLATE), 200
+
+
+@app.route('/transactions', methods=['GET'])
+def transactions():
+    try:
+        response = requests.get('https://hcb.hackclub.com/api/v3/organizations/scrapyard-sharjah/transactions')
+        if response.status_code != 200:
+            print(response.status_code)
+            return abort(response.status_code, jsonify({"error": "Internal Server Error - Transactions"}))
+        transaction = response.json()
+        return render_template_string(TRANSACTIONS_TEMPLATE, transactions=transaction), 200
+    except Exception:
+        return abort(500, jsonify({"error": "Internal Server Error - Transactions"}))
 
 
 @app.route('/signin', methods=['GET', 'POST'])
@@ -943,6 +959,10 @@ try:
     # HTML template for admin page
     with open("src/html/admin.html", "r") as f:
         ADMIN_TEMPLATE = f.read()
+
+    # HTML template for transactions page
+    with open("src/html/transactions.html", "r") as f:
+        TRANSACTIONS_TEMPLATE = f.read()
 
     # Error templates
     with open("src/html/error/403.html", "r") as f:
