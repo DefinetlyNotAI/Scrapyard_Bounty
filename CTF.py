@@ -614,27 +614,42 @@ def allowed_urls() -> List[str]:
 
 @app.errorhandler(403)
 def forbidden(e):
-    return render_template_string(ERROR_403_TEMPLATE, error_message=e.description), 403
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_403_TEMPLATE, error_message=e.description), 403
+    else:
+        return jsonify({"error": e.description}), 403
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template_string(ERROR_404_TEMPLATE, error_message=e.description), 404
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_404_TEMPLATE, error_message=e.description), 404
+    else:
+        return jsonify({"error": e.description}), 404
 
 
 @app.errorhandler(405)
-def page_not_found(e):
-    return render_template_string(ERROR_405_TEMPLATE, error_message=e.description), 405
+def method_not_allowed(e):
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_405_TEMPLATE, error_message=e.description), 405
+    else:
+        return jsonify({"error": e.description}), 405
 
 
 @app.errorhandler(429)
 def too_many_requests(e):
-    return render_template_string(ERROR_429_TEMPLATE, error_message=e.description), 429
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_429_TEMPLATE, error_message=e.description), 429
+    else:
+        return jsonify({"error": e.description}), 429
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    return render_template_string(ERROR_500_TEMPLATE, error_message=e.description), 500
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_500_TEMPLATE, error_message=e.description), 500
+    else:
+        return jsonify({"error": e.description}), 500
 
 
 # -------------------------- PAGES -------------------------- #

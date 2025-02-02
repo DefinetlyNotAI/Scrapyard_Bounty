@@ -65,6 +65,10 @@ This document provides a detailed overview of the available API endpoints for th
 Each endpoint includes information on the HTTP method, URL, required parameters, 
 and whether admin access is required as well as rate limits.
 
+> [!IMPORTANT]
+> Keep the `accept_mimetypes` as "*/*" in the request headers to receive JSON error responses.
+> The API is designed to return HTML responses by default if errors occur.
+
 ---
 
 ### `executeQuery`
