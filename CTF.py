@@ -645,6 +645,13 @@ def allowed_urls() -> List[str]:
 
 # ---------------------- ERROR HANDLERS --------------------- #
 
+@app.errorhandler(400)
+def bad_request(e):
+    if str(request.accept_mimetypes) != "*/*":
+        return render_template_string(ERROR_400_TEMPLATE, error_message=e.description), 403
+    else:
+        return jsonify({"error": e.description}), 403
+
 
 @app.errorhandler(403)
 def forbidden(e):
@@ -701,6 +708,15 @@ def home():
 @admin_required
 def admin():
     return render_template_string(ADMIN_TEMPLATE), 200
+
+
+@app.route('/admin/airtable')
+@admin_required
+def airtable():
+    airtable_url = os.getenv("AIR_TABLE_LINK_SECRET")
+    if not airtable_url:
+        abort(400, "Missing Environment Variable for AIRTABLE")
+    return render_template_string(AIR_TABLE_TEMPLATE, airtable_url=airtable_url), 200
 
 
 @app.route('/transactions', methods=['GET'])
@@ -1003,11 +1019,17 @@ try:
     with open("src/html/admin.html", "r") as f:
         ADMIN_TEMPLATE = f.read()
 
+    with open("src/html/airtable.html", "r") as f:
+        AIR_TABLE_TEMPLATE = f.read()
+
     # HTML template for transactions page
     with open("src/html/transactions.html", "r") as f:
         TRANSACTIONS_TEMPLATE = f.read()
 
     # Error templates
+    with open("src/html/error/400.html", "r") as f:
+        ERROR_400_TEMPLATE = f.read()
+
     with open("src/html/error/403.html", "r") as f:
         ERROR_403_TEMPLATE = f.read()
 
