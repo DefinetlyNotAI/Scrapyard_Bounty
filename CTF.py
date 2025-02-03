@@ -58,7 +58,10 @@ def get_db_connection() -> psycopg2._psycopg.connection:
 def admin_required(param: callable):
     def wrap(*args, **kwargs):
         if 'team_name' not in session:
-            return redirect(url_for('signin'))
+            # TODO Same as below, check if the request is from a browser or API
+            if str(request.accept_mimetypes) != "*/*":
+                return redirect(url_for('signin'))
+            abort(403, description="Insufficient Permissions, User not logged in")
         if session['team_name'] != 'ADMIN':
             abort(403,
                   description=f"Insufficient Permissions, User {session['team_name']} is not admin")
@@ -645,6 +648,7 @@ def allowed_urls() -> List[str]:
 
 # ---------------------- ERROR HANDLERS --------------------- #
 
+# TODO Make this smarter to differentiate between browsers (return HTML) and APIs (return JSON)
 @app.errorhandler(400)
 def bad_request(e):
     if str(request.accept_mimetypes) != "*/*":
