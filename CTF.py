@@ -57,15 +57,12 @@ def get_db_connection() -> psycopg2._psycopg.connection:
 # Decorator to check if the user is an admin
 def admin_required(param: callable):
     def wrap(*args, **kwargs):
-        try:
-            if 'team_name' not in session:
-                return redirect(url_for('signin'))
-            if session['team_name'] != 'ADMIN':
-                abort(403,
-                      description=f"Insufficient Permissions, User {session['team_name']} is not admin")
-            return param(*args, **kwargs)
-        except Exception:
-            abort(500, description="Admin Required Decorator")
+        if 'team_name' not in session:
+            return redirect(url_for('signin'))
+        if session['team_name'] != 'ADMIN':
+            abort(403,
+                  description=f"Insufficient Permissions, User {session['team_name']} is not admin")
+        return param(*args, **kwargs)
 
     wrap.__name__ = param.__name__
     return wrap
@@ -79,25 +76,22 @@ def rate_limit(limit: int, time_window: int = 3600):
     def decorator(func):
         @wraps(func)  # Preserve the original function metadata
         def wrapper(*args, **kwargs):
-            try:
-                user_ip = request.remote_addr
-                current_time = time.time()
+            user_ip = request.remote_addr
+            current_time = time.time()
 
-                # Ensure user IP is in the request store
-                if user_ip not in request_store:
-                    request_store[user_ip] = []
+            # Ensure user IP is in the request store
+            if user_ip not in request_store:
+                request_store[user_ip] = []
 
-                timestamps = request_store[user_ip]
-                valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
-                request_store[user_ip] = valid_timestamps
+            timestamps = request_store[user_ip]
+            valid_timestamps = [ts for ts in timestamps if current_time - ts <= time_window]
+            request_store[user_ip] = valid_timestamps
 
-                if len(valid_timestamps) >= limit:
-                    abort(429, description="Rate limit exceeded. Try again later.")
+            if len(valid_timestamps) >= limit:
+                abort(429, description="Rate limit exceeded. Try again later.")
 
-                request_store[user_ip].append(current_time)
-                return func(*args, **kwargs)
-            except Exception:
-                abort(500, description="Rate Limit Decorator")
+            request_store[user_ip].append(current_time)
+            return func(*args, **kwargs)
 
         return wrapper
 
@@ -576,27 +570,67 @@ def get_favicon():
         return abort(500, description="Favicon fetching failed")
 
 
-@app.route('/retry/<url_to_check>', methods=['POST'])
+@app.route('/retry/<path:url_to_check>', methods=['POST'])
 @rate_limit(limit=60)
 def retry(url_to_check: str):
     try:
-        # Check if the URL is in the whitelist
-        # This is to prevent SSRF attacks, it works by checking if the URL matches any of the allowed URL patterns which are generated from the Flask URL rules
-        if not any(re.fullmatch(pattern, re.sub(r'^(https?://)?(www\.)?', '', url_to_check)) for pattern in
-                   allowed_urls()):
+        # Validate and sanitize URL (remove protocol and www.)
+        sanitized_url = re.sub(r'^(https?://)?(www\.)?', '', url_to_check)
+
+        # Prevent SSRF by checking if the URL is in the whitelist
+        if not any(re.fullmatch(pattern, sanitized_url) for pattern in allowed_urls()):
             return jsonify({
-                               "error": "URL not in whitelist, This whitelist is to safeguard against SSRF attacks, Please contact developer in case you think this is wrong"}), 406
+                "error_code": "URL_NOT_ALLOWED",
+                "error_message": "URL not in whitelist. Contact the developer if this is unexpected.",
+                "status_code": 406
+            }), 406
+
+        # Prevent retry loops
         if "retry" in url_to_check:
-            return jsonify({"error": "Invalid URL - You can't have the retry call have a retry call!"}), 400
+            return jsonify({
+                "error_code": "INVALID_RETRY_CALL",
+                "error_message": "You can't have a retry call within another retry call!",
+                "status_code": 400
+            }), 400
+
+        # Attempt the request
         response = requests.get(url_to_check)
-        if response.status_code == 200:
-            return jsonify({"message": "Retry successful"}), 200
-        else:
-            return jsonify({"message": "Retry failed"}), 500
-    except requests.RequestException:
-        return jsonify({"message": "Retry failed after attempt."}), 500
-    except Exception:
-        return jsonify({"message": "Retry failed after attempt."}), 500
+
+        # Return a structured JSON response
+        return jsonify({
+            "message": "Retry successful" if response.status_code == 200 else "Retry failed",
+            "retried_url": url_to_check,
+            "status_code": response.status_code,
+            "response_text": response.text[:250]  # Limit response to prevent excessive logging
+        }), response.status_code
+
+    except requests.exceptions.ConnectionError:
+        return jsonify({
+            "error_code": "CONNECTION_ERROR",
+            "error_message": "Failed to establish a connection to the server.",
+            "status_code": 503
+        }), 503
+
+    except requests.exceptions.Timeout:
+        return jsonify({
+            "error_code": "TIMEOUT_ERROR",
+            "error_message": "The request timed out.",
+            "status_code": 504
+        }), 504
+
+    except requests.RequestException as e:
+        return jsonify({
+            "error_code": "REQUEST_FAILED",
+            "error_message": f"Request error: {str(e)}",
+            "status_code": 500
+        }), 500
+
+    except Exception as e:
+        return jsonify({
+            "error_code": "SERVER_ERROR",
+            "error_message": f"Unexpected server error: {str(e)}",
+            "status_code": 500
+        }), 500
 
 
 def allowed_urls() -> List[str]:

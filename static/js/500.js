@@ -25,21 +25,28 @@ function retryConnection() {
         document.querySelector('.server').style.animation = 'server-shake 0.5s ease-in-out infinite';
 
         // Attempt to retry the request
-        fetch(`/retry/${window.location.href}`, {method: 'POST'})
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
+        fetch(`/retry/${encodeURIComponent(window.location.href)}`, { method: 'POST' })
+            .then(response => response.json().then(data => ({ status: response.status, body: data }))) // Parse JSON
+            .then(({ status, body }) => {
+                if (status === 200) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Retry Successful!',
+                        text: `Response: ${body.message}`,
+                    });
+                } else {
+                    throw body; // Pass the error object for handling below
                 }
-                return response.json();
             })
             .catch(error => {
+                console.error('Retry failed:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'Retry failed',
-                    text: error.message,
+                    text: error.error_message || 'An unknown error occurred.',
                 });
-                console.error('Retry failed:', error);
-                // Show a random error message if refresh fails
+
+                // Update error display
                 setTimeout(() => {
                     const errorMessages = [
                         "Critical system failure: Too many cats in the database!",
@@ -50,7 +57,7 @@ function retryConnection() {
                         "System.out.of.cheese.error",
                         "HTTP 500: Server is having an existential crisis",
                         "Well this is embarrassing... Server is on strike",
-                        "Server is on fire, send a Halo-carbon fire extinguishers",
+                        "Server is on fire, send a Halo-carbon fire extinguisher",
                         "Server is busy playing Minecraft",
                         "Server is too busy watching cat videos",
                         "Server is feeling a bit under the weather",
@@ -69,9 +76,9 @@ function retryConnection() {
                         errorMessages[Math.floor(Math.random() * errorMessages.length)];
 
                     document.querySelector('.error-details').innerHTML =
-                        `<span>Error: INTERNAL_SERVER_ERROR</span><br>
-                <span>Status: 500</span><br>
-                <span>Stack: ${errorDetails[Math.floor(Math.random() * errorDetails.length)]}</span>`;
+                        `<span>Error: ${error.error_code || "INTERNAL_SERVER_ERROR"}</span><br>
+                        <span>Status: ${error.status_code || 500}</span><br>
+                        <span>Stack: ${errorDetails[Math.floor(Math.random() * errorDetails.length)]}</span>`;
                 }, 1000);
             });
     }, 1000);
