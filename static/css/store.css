@@ -3,13 +3,9 @@
 
 @font-face {
     font-family: 'p22-stanyan';
-    src:
-            url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
-            format('woff2'),
-            url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
-            format('woff'),
-            url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3')
-            format('opentype');
+    src: url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('woff2'),
+    url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('woff'),
+    url('https://use.typekit.net/af/444506/00000000000000007735b3cd/30/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3') format('opentype');
     font-display: auto;
     font-style: normal;
     font-weight: 700;
@@ -17,31 +13,15 @@
 
 @font-face {
     font-family: 'moonblossom';
-    src:
-            url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
-            format('woff2'),
-            url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
-            format('woff'),
-            url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3')
-            format('opentype');
+    src: url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff2'),
+    url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff'),
+    url('https://use.typekit.net/af/bf03be/00000000000000007735fbe5/30/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('opentype');
     font-display: auto;
     font-style: normal;
     font-weight: 400;
 }
 
 body {
-    font-family: 'p22-stanyan', sans-serif;
-    background-image: url('https://github.com/hackclub/scrapyard/blob/main/public/backgrounds/lined-paper.png?raw=true');
-    background-size: cover;
-    background-position: center;
-    color: black;
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(14px, 1vw, 18px);
     position: relative;
 }
 
@@ -114,9 +94,16 @@ h1 {
 }
 
 @keyframes fadeOut {
-    0% { opacity: 1; }
-    75% { opacity: 1; }
-    100% { opacity: 0; display: none; }
+    0% {
+        opacity: 1;
+    }
+    75% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        display: none;
+    }
 }
 
 .items {
@@ -139,31 +126,6 @@ h1 {
     position: relative;
     width: 100%;
     min-height: 300px;
-    background-image: url('https://github.com/hackclub/scrapyard/blob/main/public/elements/sticky-note.svg?raw=true');
-    background-size: 100% 100%;
-    background-position: center;
-    background-repeat: no-repeat;
-    padding: 60px 20px 20px 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: space-between;
-    text-align: center;
-    box-shadow: none;
-    border: none;
-}
-
-.item::before {
-    content: "";
-    position: absolute;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 30px;
-    height: 30px;
-    background-image: url('https://github.com/hackclub/scrapyard/blob/main/public/elements/thumbtack.png?raw=true');
-    background-size: contain;
-    background-repeat: no-repeat;
 }
 
 .item img {

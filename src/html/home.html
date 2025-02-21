@@ -7,7 +7,8 @@
     <title>CTF Challenges</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <link href="{{ url_for('static', filename='favicon.ico') }}" rel="icon" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}">
+    <link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dup_buttongroup-a.css') }}" rel="stylesheet">
 </head>
 <body>
 <div class="container">
@@ -33,11 +34,15 @@
         <a href="/leaderboard">Leaderboard</a>
         <a href="/shop">Shop</a>
         <a href="/shop/missions">Scraps Mission Board</a>
-        {% if session['team_name'] == 'ADMIN' %}
-            <a href="/admin">Admin Panel</a>
-            <a href="/admin/shop">Admin Panel for Shop</a>
-        {% endif %}
     </div>
+
+    {% if session['team_name'] == 'ADMIN' %}
+    <div class="button-group challenges">
+        <a href="/admin">Admin Panel</a>
+        <a href="/admin/shop">Admin Panel for Shop</a>
+        <a href="/transactions">HCB Transactions</a>
+    </div>
+    {% endif %}
 
     <div id="timer">Loading Timer...</div>
 </div>

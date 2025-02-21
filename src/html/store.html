@@ -3,8 +3,11 @@
 <html lang="en">
 <head>
     <title>Shop</title>
-    <link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" type="image/png">
+    <link href="{{ url_for('static', filename='favicon.png') }}" rel="icon" type="image/png">
     <link href="{{ url_for('static', filename='css/store.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dup_homebutton.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/dup_body.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/missions+store.css') }}" rel="stylesheet">
 </head>
 <body>
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -17,11 +20,14 @@
 {% endif %}
 {% endwith %}
 
-<!-- Added Orpheus Flag and Doodle -->
+<!-- Added Orpheus Flag and Doodles -->
 <div class="images">
-    <img src="https://github.com/hackclub/scrapyard/blob/main/public/elements/orpheus-flag.svg?raw=true" alt="Orpheus Flag" class="orpheus-flag">
-    <img src="https://github.com/hackclub/scrapyard/blob/main/public/elements/orpheus-doodle.svg?raw=true" alt="Orpheus Doodle" class="orpheus-doodle">
-    <img src="https://github.com/hackclub/scrapyard/blob/main/public/elements/trash-can.png?raw=true" alt="Trash Can" class="trash-can">
+    <img alt="Orpheus Flag"
+         class="orpheus-flag" src="https://github.com/hackclub/scrapyard/blob/main/public/elements/orpheus-flag.svg?raw=true">
+    <img alt="Orpheus Doodle"
+         class="orpheus-doodle" src="https://github.com/hackclub/scrapyard/blob/main/public/elements/orpheus-doodle.svg?raw=true">
+    <img alt="Trash Can" class="trash-can"
+         src="https://github.com/hackclub/scrapyard/blob/main/public/elements/trash-can.png?raw=true">
 </div>
 
 <h1>Welcome to the Store</h1>
@@ -43,5 +49,6 @@
     </div>
     {% endfor %}
 </div>
+<button class="back-button" onclick="window.location.href='/'">Back to Home</button>
 </body>
 </html>

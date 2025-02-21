@@ -25,9 +25,9 @@ function retryConnection() {
         document.querySelector('.server').style.animation = 'server-shake 0.5s ease-in-out infinite';
 
         // Attempt to retry the request
-        fetch(`/retry/${encodeURIComponent(window.location.href)}`, { method: 'POST' })
-            .then(response => response.json().then(data => ({ status: response.status, body: data }))) // Parse JSON
-            .then(({ status, body }) => {
+        fetch(`/retry/${encodeURIComponent(window.location.href)}`, {method: 'POST'})
+            .then(response => response.json().then(data => ({status: response.status, body: data}))) // Parse JSON
+            .then(({status, body}) => {
                 if (status === 200) {
                     Swal.fire({
                         icon: 'success',

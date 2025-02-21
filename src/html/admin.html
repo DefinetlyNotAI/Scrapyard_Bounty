@@ -6,9 +6,9 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Database Admin Panel</title>
     <link href="{{ url_for('static', filename='favicon.ico') }}" rel="icon" type="image/x-icon">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+    <link href="{{ url_for('static', filename='css/admin.css') }}" rel="stylesheet">
     <!-- Include SweetAlert2 CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 
     <!-- Include SweetAlert2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -88,8 +88,12 @@
 
         <div class="panel" id="backup-panel">
             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                <button class="btn btn-primary" id="createBackup" disabled style="background: grey; cursor: not-allowed;">Create Backup (WIP)</button>
-                <button class="btn btn-primary" id="restoreBackup" disabled style="background: grey; cursor: not-allowed;">Restore from Backup (WIP)</button>
+                <button class="btn btn-primary" disabled id="createBackup"
+                        style="background: grey; cursor: not-allowed;">Create Backup (WIP)
+                </button>
+                <button class="btn btn-primary" disabled id="restoreBackup"
+                        style="background: grey; cursor: not-allowed;">Restore from Backup (WIP)
+                </button>
             </div>
             <div id="backupsList">
                 <!-- Backups will be listed here -->

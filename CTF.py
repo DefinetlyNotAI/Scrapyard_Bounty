@@ -176,13 +176,13 @@ def download_challenge_files(challenge_id: str):
 # -------------------------- SHOP ------------------------------#
 
 @app.route('/api/shop/buy', methods=['POST'])
-@rate_limit(limit=10)
+@rate_limit(limit=30)
 def buy():
     item_id = request.form.get('item_id')
     user_email = request.form.get('email')
 
     if not item_id or not user_email:
-        flash("Invalid input! Make sure all fields are filled.", "danger")
+        flash("Invalid input! Make sure all fields are filled.", "error")
         return redirect(url_for('shop'))
 
     conn = get_db_connection()
@@ -205,7 +205,7 @@ def buy():
                          download_name=f"receipt_{str(uuid.uuid4())[:8]}.png")
 
     else:
-        flash('Item out of stock!', 'danger')
+        flash('Item out of stock!', 'error')
 
     cur.close()
     conn.close()
@@ -271,7 +271,7 @@ def add_mission():
         scraps = request.form.get('scraps')
 
         if not name or not description or not scraps:
-            flash("All fields are required!", "danger")
+            flash("All fields are required!", "error")
             return redirect(url_for('add_mission'))
 
         conn = get_db_connection()
@@ -1043,7 +1043,7 @@ def add_item():
         stock = request.form.get('stock')
 
         if not name or not price or not image or not stock:
-            flash("All fields except description are required!", "danger")
+            flash("All fields except description are required!", "error")
             return redirect(url_for('add_item'))
 
         conn = get_db_connection()
@@ -1054,7 +1054,7 @@ def add_item():
         cur.close()
         conn.close()
 
-        flash("Item added successfully!", "success")
+        flash("Item added successfully!", "error")
         return redirect(url_for('shop'))
 
     return render_template_string(ADD_ITEM_TEMPLATE), 200

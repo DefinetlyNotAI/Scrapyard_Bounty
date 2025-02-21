@@ -163,12 +163,12 @@ function deleteTeam(id) {
                             text: data.error,
                         });
                     } else {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Deleted!',
-                        text: data.message,
-                    });
-                    location.reload(); // Refresh to show updated records
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Deleted!',
+                            text: data.message,
+                        });
+                        location.reload(); // Refresh to show updated records
                     }
                 })
                 .catch(error => {
@@ -215,7 +215,7 @@ async function checkConnection() {
         const dbConnected = data.database_connected === true;
 
         updateConnectionStatus(apiRunning, dbConnected);
-        return { apiRunning, dbConnected };
+        return {apiRunning, dbConnected};
     } catch (error) {
         updateConnectionStatus(false, false);
         throw error;

@@ -1,7 +1,7 @@
 # Capture The Flag (CTF) Platform
 
-This project is a Capture The Flag (CTF) platform built using Python and Flask. It includes various challenges such as Cryptography, Web Exploitation, Reverse Engineering, Forensics, and Steganography.
-
+This project is a Capture The Flag (CTF) platform built using Python and Flask. It includes various challenges such as
+Cryptography, Web Exploitation, Reverse Engineering, Forensics, and Steganography.
 
 ## Features
 
@@ -29,8 +29,8 @@ This project is a Capture The Flag (CTF) platform built using Python and Flask. 
     ```sh
     pip install -r requirements.txt
     ```
-    
-4. Modify the scripts enviroment variables to your secrets
+
+4. Modify the scripts environment variables to your secrets
 
 ## Usage
 
@@ -62,8 +62,8 @@ This project is licensed under the MIT License.
 
 # API Documentation
 
-This document provides a detailed overview of the available API endpoints for the project. 
-Each endpoint includes information on the HTTP method, URL, required parameters, 
+This document provides a detailed overview of the available API endpoints for the project.
+Each endpoint includes information on the HTTP method, URL, required parameters,
 and whether admin access is required as well as rate limits.
 
 > [!IMPORTANT]
@@ -87,26 +87,26 @@ and whether admin access is required as well as rate limits.
   }
   ```
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "id": 1,
-       "username": "example_user",
-       "email": "user@example.com"
-     }
-     ```
-  - `#400`:
-     ```json
-     {
-       "error": "No query provided"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Query Execution Failed - API execute_query"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "id": 1,
+         "username": "example_user",
+         "email": "user@example.com"
+       }
+       ```
+    - `#400`:
+       ```json
+       {
+         "error": "No query provided"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Query Execution Failed - API execute_query"
+       }
+       ```
 
 ---
 
@@ -119,14 +119,14 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✅
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "status": "API is running",
-       "uptime_seconds": 12345.67,
-       "database_connected": true
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "status": "API is running",
+         "uptime_seconds": 12345.67,
+         "database_connected": true
+       }
+       ```
 
 ---
 
@@ -139,19 +139,19 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 5 requests/hour
 - **Plug and Play?:** ✔️ (Browser-accessible if challenge exists, must be signed in)
 - **Response preview**
-  - `#200`: *(Binary file download)*
-  - `#404`:
-     ```json
-     {
-       "error": "Challenge files not found"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to fetch challenge files"
-     }
-     ```
+    - `#200`: *(Binary file download)*
+    - `#404`:
+       ```json
+       {
+         "error": "Challenge files not found"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to fetch challenge files"
+       }
+       ```
 
 ---
 
@@ -164,18 +164,18 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✅
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "size": "24 MB"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get database size"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "size": "24 MB"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get database size"
+       }
+       ```
 
 ---
 
@@ -188,18 +188,18 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 60 requests/hour
 - **Plug and Play?:** ✅
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "activeConnections": 12
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get active connections"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "activeConnections": 12
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get active connections"
+       }
+       ```
 
 ---
 
@@ -212,27 +212,27 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 60 requests/hour
 - **Plug and Play?:** ✅
 - **Response preview**
-  - `#200`:
-     ```json
-     [
+    - `#200`:
+       ```json
+       [
+         {
+           "id": 1,
+           "team_name": "Team Alpha",
+           "score": 150
+         },
+         {
+           "id": 2,
+           "team_name": "Team Beta",
+           "score": 100
+         }
+       ]
+       ```
+    - `#500`:
+       ```json
        {
-         "id": 1,
-         "team_name": "Team Alpha",
-         "score": 150
-       },
-       {
-         "id": 2,
-         "team_name": "Team Beta",
-         "score": 100
+         "error": "Failed to get all teams"
        }
-     ]
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get all teams"
-     }
-     ```
+       ```
 
 ---
 
@@ -245,33 +245,33 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 50 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
+    - `#200`:
+       ```json
+       [
+         {
+           "challenge_id": 1,
+           "flag_submitted": true,
+           "score": 50
+         },
+         {
+           "challenge_id": 2,
+           "flag_submitted": false,
+           "score": 0
+         }
+       ]
+       ```
+    - `#401`:
+       ```json
        {
-         "challenge_id": 1,
-         "flag_submitted": true,
-         "score": 50
-       },
-       {
-         "challenge_id": 2,
-         "flag_submitted": false,
-         "score": 0
+         "error": "User not logged in"
        }
-     ]
-     ```
-  - `#401`:
-     ```json
-     {
-       "error": "User not logged in"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "An error occurred - Function get_challenge_progress"
-     }
-     ```
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "An error occurred - Function get_challenge_progress"
+       }
+       ```
 
 ---
 
@@ -284,25 +284,25 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 30 requests/hour
 - **Plug and Play?:** ✅ (Pagination query parameters needed)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
+    - `#200`:
+       ```json
+       [
+         {
+           "team_name": "Team Alpha",
+           "score": 300
+         },
+         {
+           "team_name": "Team Beta",
+           "score": 250
+         }
+       ]
+       ```
+    - `#500`:
+       ```json
        {
-         "team_name": "Team Alpha",
-         "score": 300
-       },
-       {
-         "team_name": "Team Beta",
-         "score": 250
+         "error": "Failed to get leaderboard"
        }
-     ]
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get leaderboard"
-     }
-     ```
+       ```
 
 ---
 
@@ -319,16 +319,16 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     ["users", "teams", "challenges"]
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Getting the tables failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       ["users", "teams", "challenges"]
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Getting the tables failed"
+       }
+       ```
 
 ---
 
@@ -341,19 +341,19 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
-       {"id": 1, "username": "admin", "email": "admin@example.com"},
-       {"id": 2, "username": "user1", "email": "user1@example.com"}
-     ]
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Getting the table rows failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       [
+         {"id": 1, "username": "admin", "email": "admin@example.com"},
+         {"id": 2, "username": "user1", "email": "user1@example.com"}
+       ]
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Getting the table rows failed"
+       }
+       ```
 
 ---
 
@@ -366,20 +366,20 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
-       {"column_name": "id", "data_type": "integer"},
-       {"column_name": "username", "data_type": "text"},
-       {"column_name": "email", "data_type": "text"}
-     ]
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Getting the table schema failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       [
+         {"column_name": "id", "data_type": "integer"},
+         {"column_name": "username", "data_type": "text"},
+         {"column_name": "email", "data_type": "text"}
+       ]
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Getting the table schema failed"
+       }
+       ```
 
 ---
 
@@ -392,18 +392,18 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "message": "Item deleted successfully."
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Deleting the table item failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "message": "Item deleted successfully."
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Deleting the table item failed"
+       }
+       ```
 
 ---
 
@@ -416,18 +416,18 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "message": "Table deleted successfully."
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Deleting the table failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "message": "Table deleted successfully."
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Deleting the table failed"
+       }
+       ```
 
 ---
 
@@ -440,18 +440,18 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "message": "Database deleted successfully."
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Deleting the database failed"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "message": "Database deleted successfully."
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Deleting the database failed"
+       }
+       ```
 
 ---
 
@@ -464,32 +464,32 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🔥 100 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "team_name": "Team Alpha",
-       "score": 150,
-       "flags_submitted": ["flag{example1}", "flag{example2}"]
-     }
-     ```
-  - `#401`:
-     ```json
-     {
-       "error": "User not logged in"
-     }
-     ```
-  - `#404`:
-     ```json
-     {
-       "error": "User not found"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get user profile"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "team_name": "Team Alpha",
+         "score": 150,
+         "flags_submitted": ["flag{example1}", "flag{example2}"]
+       }
+       ```
+    - `#401`:
+       ```json
+       {
+         "error": "User not logged in"
+       }
+       ```
+    - `#404`:
+       ```json
+       {
+         "error": "User not found"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get user profile"
+       }
+       ```
 
 ---
 
@@ -502,31 +502,31 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🔥 20 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
 - **Response preview**
-  - `#200`:
-     ```json
-     {
-       "rank": 3,
-       "next_team_score": 250
-     }
-     ```
-  - `#401`:
-     ```json
-     {
-       "error": "User not logged in"
-     }
-     ```
-  - `#404`:
-     ```json
-     {
-       "error": "Team not found"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get team rank"
-     }
-     ```
+    - `#200`:
+       ```json
+       {
+         "rank": 3,
+         "next_team_score": 250
+       }
+       ```
+    - `#401`:
+       ```json
+       {
+         "error": "User not logged in"
+       }
+       ```
+    - `#404`:
+       ```json
+       {
+         "error": "Team not found"
+       }
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get team rank"
+       }
+       ```
 
 ---
 
@@ -539,33 +539,33 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🔥 50 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
+    - `#200`:
+       ```json
+       [
+         {
+           "timestamp": "2025-01-30T14:23:00Z",
+           "flags_submitted": ["flag{example3}"],
+           "score": 50
+         },
+         {
+           "timestamp": "2025-01-29T10:15:00Z",
+           "flags_submitted": ["flag{example1}", "flag{example2}"],
+           "score": 100
+         }
+       ]
+       ```
+    - `#404`:
+       ```json
        {
-         "timestamp": "2025-01-30T14:23:00Z",
-         "flags_submitted": ["flag{example3}"],
-         "score": 50
-       },
-       {
-         "timestamp": "2025-01-29T10:15:00Z",
-         "flags_submitted": ["flag{example1}", "flag{example2}"],
-         "score": 100
+         "message": "No history found for the team"
        }
-     ]
-     ```
-  - `#404`:
-     ```json
-     {
-       "message": "No history found for the team"
-     }
-     ```
-  - `#500`:
-     ```json
-     {
-       "error": "Failed to get team history"
-     }
-     ```
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Failed to get team history"
+       }
+       ```
 
 ---
 
@@ -578,31 +578,31 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🔥 100 requests/hour
 - **Plug and Play?:** ✔️ (User must be logged in)
 - **Response preview**
-  - `#200`:
-     ```json
-     [
-       {
-         "flag": "flag{example1}",
-         "timestamp": "2025-01-30T12:00:00Z"
-       },
-       {
-         "flag": "flag{example2}",
-         "timestamp": "2025-01-29T08:45:00Z"
-       }
-     ]
-     ```
-    - `#404`:
+    - `#200`:
        ```json
-       {
-         "message": "No submissions found for the team"
-       }
+       [
+         {
+           "flag": "flag{example1}",
+           "timestamp": "2025-01-30T12:00:00Z"
+         },
+         {
+           "flag": "flag{example2}",
+           "timestamp": "2025-01-29T08:45:00Z"
+         }
+       ]
        ```
-    - `#500`:
-       ```json
-       {
-         "error": "Failed to get submission history"
-       }
-       ```
+        - `#404`:
+           ```json
+           {
+             "message": "No submissions found for the team"
+           }
+           ```
+        - `#500`:
+           ```json
+           {
+             "error": "Failed to get submission history"
+           }
+           ```
 
 ---
 
@@ -612,7 +612,7 @@ I'll continue with the documentation in the same format.
 - **Method:** POST
 - **Description:** Allows a user to buy an item from the shop, generating a receipt image if the item is in stock.
 - **Admin?:** 🔓
-- **Rate Limit:** 🔥 10 requests/hour 
+- **Rate Limit:** 🔥 30 requests/hour
 - **Plug and Play?:** ❌ (Proper JSON body must be sent)
 - **Request Body Preview:**
   ```json
@@ -622,25 +622,25 @@ I'll continue with the documentation in the same format.
   }
   ```
 - **Response preview**
-  - `#200`:
-    ```json
-    {
-      "message": "Receipt generated successfully",
-      "receipt_url": "path/to/receipt_image.png"
-    }
-    ```
-  - `#400`:
-    ```json
-    {
-      "message": "Invalid input! Make sure all fields are filled."
-    }
-    ```
-  - `#404`:
-    ```json
-    {
-      "message": "Item out of stock"
-    }
-    ```
+    - `#200`:
+      ```json
+      {
+        "message": "Receipt generated successfully",
+        "receipt_url": "path/to/receipt_image.png"
+      }
+      ```
+    - `#400`:
+      ```json
+      {
+        "message": "Invalid input! Make sure all fields are filled."
+      }
+      ```
+    - `#404`:
+      ```json
+      {
+        "message": "Item out of stock"
+      }
+      ```
 
 ---
 
@@ -660,18 +660,18 @@ I'll continue with the documentation in the same format.
   }
   ```
 - **Response preview**
-  - `#200`:
-    ```json
-    {
-      "message": "Stock updated successfully!"
-    }
-    ```
-  - `#400`:
-    ```json
-    {
-      "message": "Invalid stock values"
-    }
-    ```
+    - `#200`:
+      ```json
+      {
+        "message": "Stock updated successfully!"
+      }
+      ```
+    - `#400`:
+      ```json
+      {
+        "message": "Invalid stock values"
+      }
+      ```
 
 ---
 
@@ -690,18 +690,18 @@ I'll continue with the documentation in the same format.
   }
   ```
 - **Response preview**
-  - `#200`:
-    ```json
-    {
-      "message": "Receipt cancelled!"
-    }
-    ```
-  - `#400`:
-    ```json
-    {
-      "message": "Receipt not found"
-    }
-    ```
+    - `#200`:
+      ```json
+      {
+        "message": "Receipt cancelled!"
+      }
+      ```
+    - `#400`:
+      ```json
+      {
+        "message": "Receipt not found"
+      }
+      ```
 
 ---
 
@@ -714,18 +714,18 @@ I'll continue with the documentation in the same format.
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
 - **Response preview**
-  - `#200`:
-    ```json
-    {
-      "message": "Mission removed successfully!"
-    }
-    ```
-  - `#404`:
-    ```json
-    {
-      "message": "Mission not found"
-    }
-    ```
+    - `#200`:
+      ```json
+      {
+        "message": "Mission removed successfully!"
+      }
+      ```
+    - `#404`:
+      ```json
+      {
+        "message": "Mission not found"
+      }
+      ```
 
 ---
 
@@ -746,18 +746,18 @@ I'll continue with the documentation in the same format.
   }
   ```
 - **Response preview**
-  - `#200`:
-    ```json
-    {
-      "message": "Mission added successfully!"
-    }
-    ```
-  - `#400`:
-    ```json
-    {
-      "message": "All fields are required!"
-    }
-    ```
+    - `#200`:
+      ```json
+      {
+        "message": "Mission added successfully!"
+      }
+      ```
+    - `#400`:
+      ```json
+      {
+        "message": "All fields are required!"
+      }
+      ```
 
 ---
 
