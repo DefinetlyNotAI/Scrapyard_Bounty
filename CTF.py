@@ -744,16 +744,18 @@ def retry(url_to_check: str):
         }), 504
 
     except requests.RequestException as e:
+        app.logger.error(f"Request error: {str(e)}")
         return jsonify({
             "error_code": "REQUEST_FAILED",
-            "error_message": f"Request error: {str(e)}",
+            "error_message": "An error occurred while processing your request.",
             "status_code": 500
         }), 500
 
     except Exception as e:
+        app.logger.error(f"Unexpected server error: {str(e)}")
         return jsonify({
             "error_code": "SERVER_ERROR",
-            "error_message": f"Unexpected server error: {str(e)}",
+            "error_message": "An unexpected error occurred on the server.",
             "status_code": 500
         }), 500
 
