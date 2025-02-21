@@ -31,6 +31,12 @@
     <div class="button-group other">
         <a href="/submit">Submit Flag</a>
         <a href="/leaderboard">Leaderboard</a>
+        <a href="/shop">Shop</a>
+        <a href="/shop/missions">Scraps Mission Board</a>
+        {% if session['team_name'] == 'ADMIN' %}
+            <a href="/admin">Admin Panel</a>
+            <a href="/admin/shop">Admin Panel for Shop</a>
+        {% endif %}
     </div>
 
     <div id="timer">Loading Timer...</div>
