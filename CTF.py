@@ -906,8 +906,15 @@ def transactions():
         response = requests.get('https://hcb.hackclub.com/api/v3/organizations/scrapyard-sharjah/transactions')
         if response.status_code != 200:
             return abort(response.status_code, description="Transactions API failed (External -> HCB)")
-        transaction = response.json()
-        return render_template_string(TRANSACTIONS_TEMPLATE, transactions=transaction), 200
+        transaction_data = response.json()
+
+        # Modify the transaction data to convert cents to dollars
+        for transaction in transaction_data:
+            if 'amount_cents' in transaction:
+                transaction['amount_dollars'] = transaction['amount_cents'] / 100
+                del transaction['amount_cents']  # Optionally remove 'amount_cents'
+
+        return render_template_string(TRANSACTIONS_TEMPLATE, transactions=transaction_data), 200
     except Exception:
         return abort(500, description="Transactions")
 
