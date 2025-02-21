@@ -1119,6 +1119,17 @@ def missions():
     return render_template_string(MISSIONS_TEMPLATE, missions=mission), 200
 
 
+@app.route('/model-answer/<int:answer_id>')
+def get_model_answer(answer_id):
+    try:
+        if 1 <= answer_id <= 5:
+            return render_template_string(MODEL_ANSWERS[answer_id - 1])
+        else:
+            abort(404, "Invalid answer ID, Only 1-5 are available")
+    except Exception:
+        abort(500, "Model answer fetching failed")
+
+
 # ------------------------ CHALLENGES ------------------------ #
 
 
@@ -1354,6 +1365,24 @@ try:
 
     with open("src/html/store.html", "r") as f:
         STORE_TEMPLATE = f.read()
+
+    # Model Answers templates
+    with open("src/html/model_answers/1.html", "r") as f:
+        MODEL_ANSWER_1_TEMPLATE = f.read()
+
+    with open("src/html/model_answers/2.html", "r") as f:
+        MODEL_ANSWER_2_TEMPLATE = f.read()
+
+    with open("src/html/model_answers/3.html", "r") as f:
+        MODEL_ANSWER_3_TEMPLATE = f.read()
+
+    with open("src/html/model_answers/4.html", "r") as f:
+        MODEL_ANSWER_4_TEMPLATE = f.read()
+
+    with open("src/html/model_answers/5.html", "r") as f:
+        MODEL_ANSWER_5_TEMPLATE = f.read()
+
+    MODEL_ANSWERS = [MODEL_ANSWER_1_TEMPLATE, MODEL_ANSWER_2_TEMPLATE, MODEL_ANSWER_3_TEMPLATE, MODEL_ANSWER_4_TEMPLATE, MODEL_ANSWER_5_TEMPLATE]
 except FileNotFoundError:
     abort(404, description="HTML Templates not found")
 except Exception:
