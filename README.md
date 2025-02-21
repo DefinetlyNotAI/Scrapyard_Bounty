@@ -605,6 +605,161 @@ I'll continue with the documentation in the same format.
 
 ---
 
+### `buy`
+
+- **URL:** `/api/shop/buy`
+- **Method:** POST
+- **Description:** Allows a user to buy an item from the shop, generating a receipt image if the item is in stock.
+- **Admin?:** 🔓
+- **Rate Limit:** 🔥 10 requests/hour 
+- **Plug and Play?:** ❌ (Proper JSON body must be sent)
+- **Request Body Preview:**
+  ```json
+  {
+    "item_id": "123",
+    "email": "user@example.com"
+  }
+  ```
+- **Response preview**
+  - `#200`:
+    ```json
+    {
+      "message": "Receipt generated successfully",
+      "receipt_url": "path/to/receipt_image.png"
+    }
+    ```
+  - `#400`:
+    ```json
+    {
+      "message": "Invalid input! Make sure all fields are filled."
+    }
+    ```
+  - `#404`:
+    ```json
+    {
+      "message": "Item out of stock"
+    }
+    ```
+
+---
+
+### `update_stock`
+
+- **URL:** `/api/shop/update_stock`
+- **Method:** POST
+- **Description:** Allows an admin to update the stock levels for items in the shop.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ❌ (Admin required and Proper JSON body must be sent)
+- **Request Body Preview:**
+  ```json
+  {
+    "stock_123": "10",
+    "stock_124": "5"
+  }
+  ```
+- **Response preview**
+  - `#200`:
+    ```json
+    {
+      "message": "Stock updated successfully!"
+    }
+    ```
+  - `#400`:
+    ```json
+    {
+      "message": "Invalid stock values"
+    }
+    ```
+
+---
+
+### `cancel_receipt`
+
+- **URL:** `/api/shop/cancel_receipt`
+- **Method:** POST
+- **Description:** Allows an admin to cancel a receipt by deleting it from the database.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ❌ (Admin required and Proper JSON body must be sent)
+- **Request Body Preview:**
+  ```json
+  {
+    "receipt_id": "abc123"
+  }
+  ```
+- **Response preview**
+  - `#200`:
+    ```json
+    {
+      "message": "Receipt cancelled!"
+    }
+    ```
+  - `#400`:
+    ```json
+    {
+      "message": "Receipt not found"
+    }
+    ```
+
+---
+
+### `remove_mission`
+
+- **URL:** `/api/shop/remove_mission/<int:mission_id>`
+- **Method:** GET
+- **Description:** Allows an admin to remove a mission from the system.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response preview**
+  - `#200`:
+    ```json
+    {
+      "message": "Mission removed successfully!"
+    }
+    ```
+  - `#404`:
+    ```json
+    {
+      "message": "Mission not found"
+    }
+    ```
+
+---
+
+### `add_mission`
+
+- **URL:** `/api/shop/add_mission`
+- **Method:** GET, POST
+- **Description:** Allows an admin to add a new mission to the system.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ❌ (Admin required and Proper JSON body must be sent)
+- **Request Body Preview:**
+  ```json
+  {
+    "name": "New Mission",
+    "description": "A description of the new mission",
+    "scraps": "100"
+  }
+  ```
+- **Response preview**
+  - `#200`:
+    ```json
+    {
+      "message": "Mission added successfully!"
+    }
+    ```
+  - `#400`:
+    ```json
+    {
+      "message": "All fields are required!"
+    }
+    ```
+
+---
+
 ### Mini Table for Emoji Explanation
 
 | Emoji | Sector        | Meaning                                                                             |
