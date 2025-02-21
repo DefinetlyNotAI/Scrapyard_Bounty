@@ -11,7 +11,7 @@ from typing import List
 import psycopg2
 import requests
 from PIL import Image, ImageDraw, ImageFont
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, request, redirect, url_for, flash
 from flask import render_template_string, session, jsonify, make_response, abort
 from flask import send_file
 from flask import send_from_directory
@@ -176,6 +176,7 @@ def download_challenge_files(challenge_id: str):
 # -------------------------- SHOP ------------------------------#
 
 @app.route('/api/shop/buy', methods=['POST'])
+@rate_limit(limit=10)
 def buy():
     item_id = request.form.get('item_id')
     user_email = request.form.get('email')
