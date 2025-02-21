@@ -29,7 +29,8 @@ This project is a Capture The Flag (CTF) platform built using Python and Flask. 
     ```sh
     pip install -r requirements.txt
     ```
-
+    
+4. Modify the scripts enviroment variables to your secrets
 
 ## Usage
 
