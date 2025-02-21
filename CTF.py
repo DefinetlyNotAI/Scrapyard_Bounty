@@ -1301,7 +1301,7 @@ try:
     with open("src/html/missions.html", "r") as f:
         MISSIONS_TEMPLATE = f.read()
 
-    with open("src/html/modify_stocks.html", "r") as f:
+    with open("src/html/modify_stock.html", "r") as f:
         MODIFY_STOCKS_TEMPLATE = f.read()
 
     with open("src/html/store.html", "r") as f:
