@@ -436,15 +436,21 @@ def get_table_rows(table_name: str):
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Fetch column names
+        cursor.execute(sql.SQL("SELECT column_name FROM information_schema.columns WHERE table_name = %s"), (table_name,))
+        columns = [row[0] for row in cursor.fetchall()]
+
+        # Fetch row data
         query = sql.SQL("SELECT * FROM {} LIMIT 100").format(sql.Identifier(table_name))
         cursor.execute(query)
         rows = cursor.fetchall()
 
         cursor.close()
         conn.close()
-        return jsonify(rows), 200
-    except Exception:
-        return jsonify({"error": "Getting the table rows failed"}), 500
+
+        return jsonify({"columns": columns, "rows": rows}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/get/tables/<table_name>/schema', methods=['GET'])

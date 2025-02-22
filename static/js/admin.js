@@ -360,3 +360,74 @@ document.addEventListener("DOMContentLoaded", async () => {
     await populateTableDropdown();
     await init();
 });
+
+document.addEventListener("DOMContentLoaded", function () {
+    const tableBody = document.getElementById("table-body");
+
+    function fetchTableData(tableName) {
+        fetch(`/api/get/tables/${tableName}`)
+            .then(response => response.json())
+            .then(data => {
+                renderTable(data);
+            })
+            .catch(() => alert("Failed to fetch table data."));
+    }
+
+    function renderTable(data) {
+        tableBody.innerHTML = "";
+        data.forEach((row, rowIndex) => {
+            let tr = document.createElement("tr");
+            Object.values(row).forEach(value => {
+                let td = document.createElement("td");
+                td.textContent = value;
+                tr.appendChild(td);
+            });
+            let editBtn = document.createElement("button");
+            editBtn.textContent = "Edit";
+            editBtn.onclick = () => showEditForm(row, rowIndex);
+            let actionTd = document.createElement("td");
+            actionTd.appendChild(editBtn);
+            tr.appendChild(actionTd);
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function showEditForm(row, rowIndex) {
+        let formHtml = `<h3>Edit Row</h3>`;
+        formHtml += `<form id='edit-form'>`;
+        let primaryKey = Object.keys(row)[0];
+        let primaryValue = row[primaryKey];
+
+        Object.entries(row).forEach(([key, value]) => {
+            formHtml += `<label>${key}: <input type='text' name='${key}' value='${value}'></label><br>`;
+        });
+
+        formHtml += `<button type='submit'>Generate SQL</button>`;
+        formHtml += `</form>`;
+        formHtml += `<pre id='sql-output'></pre>`;
+
+        document.getElementById("edit-container").innerHTML = formHtml;
+        document.getElementById("edit-form").onsubmit = (e) => {
+            e.preventDefault();
+            generateSQL(primaryKey, primaryValue, new FormData(e.target));
+        };
+    }
+
+    function generateSQL(primaryKey, primaryValue, formData) {
+        let tableName = document.getElementById("table-name").value;
+        let sql = `UPDATE ${tableName} SET `;
+        let updates = [];
+
+        for (let [key, value] of formData.entries()) {
+            updates.push(`${key} = '${value}'`);
+        }
+        sql += updates.join(", ") + ` WHERE ${primaryKey} = '${primaryValue}';`;
+
+        document.getElementById("sql-output").textContent = sql;
+    }
+
+    document.getElementById("load-table").onclick = function () {
+        let tableName = document.getElementById("table-name").value;
+        if (tableName) fetchTableData(tableName);
+    };
+});
