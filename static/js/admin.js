@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 row.innerHTML = `
                         <td>${table}</td>
                         <td>
-                            <button class="btn btn-danger delete-item" data-row-id="${table}">Delete</button>
+                            <button class="btn btn-danger delete-item" data-row-id="${table}" onclick="deleteTable('${table}')">Delete</button>
                         </td>
                     `;
                 dataTable.appendChild(row);
@@ -80,6 +80,27 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("Error fetching tables:", error);
         });
 });
+
+function deleteTable(tableName) {
+    fetch(`/api/delete/tables/${tableName}`, { method: "DELETE" })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success',
+                    text: data.message,
+                });
+                // Refresh table data or perform any other necessary actions
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to delete table: ' + data.error,
+                });
+            }
+        });
+}
 
 document.addEventListener("click", (e) => {
     if (e.target.classList.contains("delete-item")) {

@@ -473,16 +473,29 @@ def get_table_schema(table_name: str):
 def delete_table_item(table_name: str, row_id: int):
     try:
         conn = get_db_connection()
-
         cursor = conn.cursor()
-        query = sql.SQL("DELETE FROM {} WHERE id = %s").format(sql.Identifier(table_name))
+
+        # Get the primary key column name for the table
+        cursor.execute("""
+            SELECT a.attname
+            FROM pg_constraint c
+            JOIN pg_namespace n ON n.oid = c.connamespace
+            JOIN pg_class t ON t.oid = c.conrelid
+            JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY(c.conkey)
+            WHERE n.nspname = 'public' AND t.relname = %s AND c.contype = 'p'
+        """, (table_name,))
+        primary_key_column = cursor.fetchone()[0]
+
+        # Use the primary key column name in the delete query
+        query = sql.SQL("DELETE FROM {} WHERE {} = %s").format(sql.Identifier(table_name), sql.Identifier(primary_key_column))
         cursor.execute(query, (row_id,))
         conn.commit()
+
         cursor.close()
         conn.close()
         return jsonify({"message": "Item deleted successfully."}), 200
-    except Exception:
-        return jsonify({"error": "Deleting the table item failed"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete item: {e}"}), 500
 
 
 @app.route('/api/delete/tables/<table_name>', methods=['DELETE'])
