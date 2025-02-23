@@ -466,7 +466,32 @@ def get_table_schema(table_name: str):
         return jsonify({"error": "Getting the table schema failed"}), 500
 
 
+@app.route('/api/get/tables/headers/<string:table_name>')
+@admin_required
+def get_table_headers(table_name: str):
+    try:
+        # Assuming we have a function to get the table headers from the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        query = sql.SQL("SELECT * FROM {} LIMIT 1").format(sql.Identifier(table_name))
+        cursor.execute(query)
+        row = cursor.fetchone()
+
+        if row is None:
+            raise Exception("Table is empty")
+
+        headers = [desc[0] for desc in cursor.description]
+        cursor.close()
+        conn.close()
+
+        # Reformat all the headers to be human-readable
+        return jsonify([header.replace("_", " ").title() for header in headers])
+    except Exception:
+        return jsonify({"error": "Getting the table rows headers failed"}), 500
+
 # ------------------------- DELETE ----------------------------#
+
 
 @app.route('/api/delete/tables/<table_name>/<int:row_id>', methods=['DELETE'])
 @admin_required
@@ -487,15 +512,16 @@ def delete_table_item(table_name: str, row_id: int):
         primary_key_column = cursor.fetchone()[0]
 
         # Use the primary key column name in the delete query
-        query = sql.SQL("DELETE FROM {} WHERE {} = %s").format(sql.Identifier(table_name), sql.Identifier(primary_key_column))
+        query = sql.SQL("DELETE FROM {} WHERE {} = %s").format(sql.Identifier(table_name),
+                                                               sql.Identifier(primary_key_column))
         cursor.execute(query, (row_id,))
         conn.commit()
 
         cursor.close()
         conn.close()
         return jsonify({"message": "Item deleted successfully."}), 200
-    except Exception as e:
-        return jsonify({"error": f"Failed to delete item: {e}"}), 500
+    except Exception:
+        return jsonify({"error": f"Failed to delete item"}), 500
 
 
 @app.route('/api/delete/tables/<table_name>', methods=['DELETE'])
@@ -810,8 +836,8 @@ def generate_receipt_image(user_email, item_name, item_price, item_image_url):
             img.paste(item_image, (20, 150))  # Paste the image onto the receipt
         else:
             raise Exception(f"Failed to fetch image: {response.status_code}")
-    except Exception as e:
-        print(f"Error loading item image: {e}")
+    except Exception:
+        abort(500, f"Error loading item image")
 
     # Generate the image in memory
     img_io = BytesIO()

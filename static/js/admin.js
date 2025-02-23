@@ -269,19 +269,53 @@ document.querySelectorAll(".tab").forEach(tab => {
     });
 });
 
-tableSelect.addEventListener("change", (e) => {
+tableSelect.addEventListener("change", async (e) => {
     const tableName = e.target.value;
-    fetch(`/api/get/tables/${tableName}`)
-        .then(res => res.json())
-        .then(data => {
-            dataTable.innerHTML = data.map(row => `
+
+    if (!tableName) return;
+
+    try {
+        // Fetch headers first
+        const headersRes = await fetch(`/api/get/tables/headers/${tableName}`);
+        const headers = await headersRes.json();
+
+        // Generate table header
+        const tableHeaders = headers.map(header => `<th>${header}</th>`).join("");
+        dataTable.innerHTML = `
+            <thead>
                 <tr>
-                    ${row.map(cell => `<td>${cell}</td>`).join("")}
-                    <td><button class="btn btn-danger" onclick="deleteRow(${row[0]})">Delete</button></td>
+                    ${tableHeaders}
+                    <th>Actions</th>
                 </tr>
-            `).join("");
+            </thead>
+            <tbody>
+                <!-- Data will be populated here -->
+            </tbody>
+        `;
+
+        // Fetch table data
+        const dataRes = await fetch(`/api/get/tables/${tableName}`);
+        const data = await dataRes.json();
+
+        // Generate table rows
+        const tbody = dataTable.querySelector("tbody");
+        tbody.innerHTML = data.map(row => `
+            <tr>
+                ${row.map(cell => `<td>${cell}</td>`).join("")}
+                <td><button class="btn btn-danger" onclick="deleteRow(${row[0]})">Delete</button></td>
+            </tr>
+        `).join("");
+
+    } catch (error) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load table data: ' + error,
         });
+        console.error("Error fetching table data:", error);
+    }
 });
+
 
 function deleteRow(rowId) {
     const tableName = document.getElementById("tableSelect").value;

@@ -383,6 +383,34 @@ I'll continue with the documentation in the same format.
 
 ---
 
+
+
+### `get_table_headers`
+
+- **URL:** `/api/get/tables/headers/<string:table_name>`
+- **Method:** GET
+- **Description:** Retrieves the headers of a given table.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✔️ (Admin required)
+- **Response preview**
+    - `#200`:
+       ```json
+       [
+         "Id",
+         "Username",
+         "Email"
+       ]
+       ```
+    - `#500`:
+       ```json
+       {
+         "error": "Getting the table rows headers failed"
+       }
+       ```
+
+---
+
 ### `delete_table_item`
 
 - **URL:** `/api/delete/tables/<table_name>/<row_id>`
