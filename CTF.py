@@ -490,6 +490,7 @@ def get_table_headers(table_name: str):
     except Exception:
         return jsonify({"error": "Getting the table rows headers failed"}), 500
 
+
 # ------------------------- DELETE ----------------------------#
 
 
@@ -1121,13 +1122,13 @@ def missions():
 
 @app.route('/model-answer/<int:answer_id>')
 def get_model_answer(answer_id):
-    try:
-        if 1 <= answer_id <= 5:
+    if 1 <= answer_id <= 5:
+        try:
             return render_template_string(MODEL_ANSWERS[answer_id - 1])
-        else:
-            abort(404, "Invalid answer ID, Only 1-5 are available")
-    except Exception:
-        abort(500, "Model answer fetching failed")
+        except Exception:
+            abort(500, "Model answer fetching failed")
+    else:
+        abort(404, "Invalid answer ID, Only 1-5 are available")
 
 
 # ------------------------ CHALLENGES ------------------------ #
@@ -1382,7 +1383,8 @@ try:
     with open("src/html/model_answers/5.html", "r") as f:
         MODEL_ANSWER_5_TEMPLATE = f.read()
 
-    MODEL_ANSWERS = [MODEL_ANSWER_1_TEMPLATE, MODEL_ANSWER_2_TEMPLATE, MODEL_ANSWER_3_TEMPLATE, MODEL_ANSWER_4_TEMPLATE, MODEL_ANSWER_5_TEMPLATE]
+    MODEL_ANSWERS = [MODEL_ANSWER_1_TEMPLATE, MODEL_ANSWER_2_TEMPLATE, MODEL_ANSWER_3_TEMPLATE, MODEL_ANSWER_4_TEMPLATE,
+                     MODEL_ANSWER_5_TEMPLATE]
 except FileNotFoundError:
     abort(404, description="HTML Templates not found")
 except Exception:
