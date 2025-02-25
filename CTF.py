@@ -1298,7 +1298,7 @@ def steganography():
 
 @app.route('/api')
 def api_help():
-    redirect('https://github.com/DefinetlyNotAI/Scrapyard_Bounty#api-documentation')
+    return redirect('https://github.com/DefinetlyNotAI/Scrapyard_Bounty#api-documentation')
 
 
 # --------------------------- HTML --------------------------- #
