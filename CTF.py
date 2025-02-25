@@ -1296,6 +1296,10 @@ def steganography():
 
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
 
+@app.route('/api')
+def api_help():
+    redirect('https://github.com/DefinetlyNotAI/Scrapyard_Bounty#api-documentation')
+
 
 # --------------------------- HTML --------------------------- #
 
