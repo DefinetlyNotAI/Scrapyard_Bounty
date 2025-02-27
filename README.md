@@ -67,8 +67,8 @@ Each endpoint includes information on the HTTP method, URL, required parameters,
 and whether admin access is required as well as rate limits.
 
 > [!IMPORTANT]
-> Keep the `accept_mimetypes` as "*/*" in the request headers to receive JSON error responses.
-> The API is designed to return HTML responses by default if errors occur.
+> Keep the `accept` header as "application/json" in the request headers to receive JSON error responses.
+> The API is designed to return HTML responses by priority default if errors occur.
 
 ---
 
@@ -139,7 +139,7 @@ and whether admin access is required as well as rate limits.
 - **Rate Limit:** 🔥 5 requests/hour
 - **Plug and Play?:** ✔️ (Browser-accessible if challenge exists, must be signed in)
 - **Response preview**
-    - `#200`: *(Binary file download)*
+    - `#200` -> *(Binary file download)*
     - `#404`:
        ```json
        {
@@ -383,8 +383,6 @@ I'll continue with the documentation in the same format.
 
 ---
 
-
-
 ### `get_table_headers`
 
 - **URL:** `/api/get/tables/headers/<string:table_name>`
@@ -619,18 +617,18 @@ I'll continue with the documentation in the same format.
          }
        ]
        ```
-        - `#404`:
-           ```json
-           {
-             "message": "No submissions found for the team"
-           }
-           ```
-        - `#500`:
-           ```json
-           {
-             "error": "Failed to get submission history"
-           }
-           ```
+    - `#404`:
+       ```json
+       {
+         "message": "No submissions found for the team"
+       }
+       ```
+      - `#500`:
+         ```json
+         {
+           "error": "Failed to get submission history"
+         }
+         ```
 
 ---
 
@@ -650,25 +648,7 @@ I'll continue with the documentation in the same format.
   }
   ```
 - **Response preview**
-    - `#200`:
-      ```json
-      {
-        "message": "Receipt generated successfully",
-        "receipt_url": "path/to/receipt_image.png"
-      }
-      ```
-    - `#400`:
-      ```json
-      {
-        "message": "Invalid input! Make sure all fields are filled."
-      }
-      ```
-    - `#404`:
-      ```json
-      {
-        "message": "Item out of stock"
-      }
-      ```
+    - `#200` -> Downloads Receipt:
 
 ---
 
@@ -687,19 +667,6 @@ I'll continue with the documentation in the same format.
     "stock_124": "5"
   }
   ```
-- **Response preview**
-    - `#200`:
-      ```json
-      {
-        "message": "Stock updated successfully!"
-      }
-      ```
-    - `#400`:
-      ```json
-      {
-        "message": "Invalid stock values"
-      }
-      ```
 
 ---
 
@@ -717,19 +684,6 @@ I'll continue with the documentation in the same format.
     "receipt_id": "abc123"
   }
   ```
-- **Response preview**
-    - `#200`:
-      ```json
-      {
-        "message": "Receipt cancelled!"
-      }
-      ```
-    - `#400`:
-      ```json
-      {
-        "message": "Receipt not found"
-      }
-      ```
 
 ---
 
@@ -741,19 +695,6 @@ I'll continue with the documentation in the same format.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
 - **Plug and Play?:** ✔️ (Admin required)
-- **Response preview**
-    - `#200`:
-      ```json
-      {
-        "message": "Mission removed successfully!"
-      }
-      ```
-    - `#404`:
-      ```json
-      {
-        "message": "Mission not found"
-      }
-      ```
 
 ---
 
@@ -764,7 +705,7 @@ I'll continue with the documentation in the same format.
 - **Description:** Allows an admin to add a new mission to the system.
 - **Admin?:** 🔐
 - **Rate Limit:** 🚀
-- **Plug and Play?:** ❌ (Admin required and Proper JSON body must be sent)
+- **Plug and Play?:** ❌ (Proper JSON body must be sent)
 - **Request Body Preview:**
   ```json
   {
@@ -773,23 +714,53 @@ I'll continue with the documentation in the same format.
     "scraps": "100"
   }
   ```
-- **Response preview**
-    - `#200`:
-      ```json
-      {
-        "message": "Mission added successfully!"
-      }
-      ```
-    - `#400`:
-      ```json
-      {
-        "message": "All fields are required!"
-      }
-      ```
 
 ---
 
-### Mini Table for Emoji Explanation
+## `abort_num`
+
+- **URL:** `/abort/<http_code>`
+- **Method:** GET
+- **Description:** Allows an admin to trigger an HTTP abort with a specified status code.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✅
+- **Response:**
+    - `#200` -> The server aborts with the given HTTP code and a message:
+        ```json
+        {
+          "message": "Requested to abort with code <http_code>"
+        }
+        ```
+    - `#400`:
+        ```json
+        {
+         "message": "Error occurred in /abort"
+        }
+        ```
+    - `#500`:
+        ```json
+        {
+          "message": "Error occurred in /abort"
+        }
+        ```
+
+---
+
+# API that require ADMIN
+
+You may add this to the JSON that you are already will send:
+```json
+{
+  "api-key": "API KEY"
+}
+```
+With the proper API KEY you will be authenticated,
+This is rate limited to 15 incorrect requests per hour
+
+---
+
+## Mini Table for Emoji Explanation
 
 | Emoji | Sector        | Meaning                                                                             |
 |-------|---------------|-------------------------------------------------------------------------------------|

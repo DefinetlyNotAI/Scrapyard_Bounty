@@ -30,8 +30,6 @@ app = Flask(__name__)
 # Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-START_TIME = time.time()
-
 # ------------------ ENVIRONMENT VARIABLES -------------------- #
 
 # Flags and awards
@@ -52,6 +50,14 @@ KEY = os.getenv("KEY", "ERR")
 if "ERR" in [FLAG_1, FLAG_2, FLAG_3, FLAG_4, FLAG_5, KEY]:
     print("404: Env variable are not fully set, some are running on default - Continuing")
 
+# Valid API key
+VALID_API_KEYS = [os.getenv("API")]
+
+# Global Tracker Variables
+RATE_LIMIT = 0
+LAST_RESET_TIME = time.time()
+START_TIME = time.time()
+
 
 # ------------------------- DATABASE ------------------------- #
 
@@ -61,20 +67,42 @@ def get_db_connection() -> psycopg2._psycopg.connection:
     return conn
 
 
+# Reset admin required rate limit
+def reset_rate_limit():
+    global RATE_LIMIT, LAST_RESET_TIME
+    if time.time() - LAST_RESET_TIME >= 3600:
+        RATE_LIMIT = 0
+        LAST_RESET_TIME = time.time()
+
+
 # Decorator to check if the user is an admin
 def admin_required(param: callable):
+    @wraps(param)
     def wrap(*args, **kwargs):
-        if 'team_name' not in session:
-            # TODO Same as below, check if the request is from a browser or API
-            if str(request.accept_mimetypes) != "*/*":
+        global RATE_LIMIT
+        reset_rate_limit()
+
+        is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+        print(is_browser_request)
+
+        if is_browser_request:
+            if 'team_name' not in session:
                 return redirect(url_for('signin'))
-            abort(403, description="Insufficient Permissions, User not logged in")
-        if session['team_name'] != 'ADMIN':
-            abort(403,
-                  description=f"Insufficient Permissions, User {session['team_name']} is not admin")
+            if session['team_name'] != 'ADMIN':
+                abort(403, description=f"Insufficient Permissions, User {session['team_name']} is not admin")
+        else:
+            try:
+                api_key = request.json.get('api-key') if request.is_json else request.headers.get('api-key')
+                if api_key not in VALID_API_KEYS:
+                    RATE_LIMIT += 1
+                    if RATE_LIMIT > 15:
+                        abort(429, description="Rate limit exceeded. Try again later.")
+                    abort(403, description="Invalid API Key for ADMIN")
+            except Exception:
+                abort(400, description="No API key passed")
+
         return param(*args, **kwargs)
 
-    wrap.__name__ = param.__name__
     return wrap
 
 
@@ -131,6 +159,24 @@ def execute_query():
         return jsonify(results), 200
     except Exception:
         return jsonify({"error": "Query Execution Failed - API execute_query"}), 500
+
+
+@app.route('/abort/<http_code>')
+@admin_required
+def abort_num(http_code: int):
+    try:
+        http_status_codes = [
+            100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+            300, 301, 302, 303, 304, 305, 306, 307, 308,
+            400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414,
+            415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 427, 428, 429, 431, 451,
+            500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511
+        ]
+        if http_code not in http_status_codes:
+            abort(400, f"Invalid http code passed to abort, {http_code}")
+        abort(http_code, f"Requested to abort with code {http_code}")
+    except Exception:
+        abort(500, "Error occurred in /abort")
 
 
 @app.route('/api/status', methods=['GET'])
@@ -850,10 +896,10 @@ def generate_receipt_image(user_email, item_name, item_price, item_image_url):
 
 # ---------------------- ERROR HANDLERS --------------------- #
 
-# TODO Make this smarter to differentiate between browsers (return HTML) and APIs (return JSON)
 @app.errorhandler(400)
 def bad_request(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_400_TEMPLATE, error_message=e.description), 403
     else:
         return jsonify({"error": e.description}), 403
@@ -861,7 +907,8 @@ def bad_request(e):
 
 @app.errorhandler(403)
 def forbidden(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_403_TEMPLATE, error_message=e.description), 403
     else:
         return jsonify({"error": e.description}), 403
@@ -869,7 +916,8 @@ def forbidden(e):
 
 @app.errorhandler(404)
 def page_not_found(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_404_TEMPLATE, error_message=e.description), 404
     else:
         return jsonify({"error": e.description}), 404
@@ -877,7 +925,8 @@ def page_not_found(e):
 
 @app.errorhandler(405)
 def method_not_allowed(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_405_TEMPLATE, error_message=e.description), 405
     else:
         return jsonify({"error": e.description}), 405
@@ -885,7 +934,8 @@ def method_not_allowed(e):
 
 @app.errorhandler(429)
 def too_many_requests(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_429_TEMPLATE, error_message=e.description), 429
     else:
         return jsonify({"error": e.description}), 429
@@ -893,7 +943,8 @@ def too_many_requests(e):
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    if str(request.accept_mimetypes) != "*/*":
+    is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
+    if is_browser_request:
         return render_template_string(ERROR_500_TEMPLATE, error_message=e.description), 500
     else:
         return jsonify({"error": e.description}), 500
