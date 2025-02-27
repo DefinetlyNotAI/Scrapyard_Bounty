@@ -173,10 +173,10 @@ def abort_num(http_code: int):
             500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511
         ]
         if http_code not in http_status_codes:
-            abort(400, f"Invalid http code passed to abort, {http_code}")
-        abort(http_code, f"Requested to abort with code {http_code}")
-    except Exception:
-        abort(500, "Error occurred in /abort")
+            abort(400, description=f"Invalid http code passed to abort, {http_code}")
+        abort(http_code, description=f"Requested to abort with code {http_code}")
+    except Exception as e:
+        abort(500, description=f"Error occurred in /abort - {e}")
 
 
 @app.route('/api/status', methods=['GET'])
@@ -884,7 +884,7 @@ def generate_receipt_image(user_email, item_name, item_price, item_image_url):
         else:
             raise Exception(f"Failed to fetch image: {response.status_code}")
     except Exception:
-        abort(500, f"Error loading item image")
+        abort(500, description=f"Error loading item image")
 
     # Generate the image in memory
     img_io = BytesIO()
@@ -972,7 +972,7 @@ def admin():
 def airtable():
     airtable_url = os.getenv("AIR_TABLE_LINK_SECRET")
     if not airtable_url:
-        abort(400, "Missing Environment Variable for AIRTABLE")
+        abort(400, description="Missing Environment Variable for AIRTABLE")
     return render_template_string(AIR_TABLE_TEMPLATE, airtable_url=airtable_url), 200
 
 
@@ -1177,9 +1177,9 @@ def get_model_answer(answer_id):
         try:
             return render_template_string(MODEL_ANSWERS[answer_id - 1])
         except Exception:
-            abort(500, "Model answer fetching failed")
+            abort(500, description="Model answer fetching failed")
     else:
-        abort(404, "Invalid answer ID, Only 1-5 are available")
+        abort(404, description="Invalid answer ID, Only 1-5 are available")
 
 
 # ------------------------ CHALLENGES ------------------------ #
