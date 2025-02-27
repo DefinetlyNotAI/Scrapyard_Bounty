@@ -161,7 +161,7 @@ def execute_query():
 
 
 @app.route('/abort/<http_code>')
-# @admin_required
+@admin_required
 def abort_num(http_code: int):
     http_status_codes = [
         100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
