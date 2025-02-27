@@ -172,7 +172,7 @@ def abort_num(http_code: int):
             415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 427, 428, 429, 431, 451,
             500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511
         ]
-        if http_code not in http_status_codes:
+        if int(http_code) not in http_status_codes:
             abort(400, description=f"Invalid http code passed to abort, {http_code}")
         abort(http_code, description=f"Requested to abort with code {http_code}")
     except Exception as e:
