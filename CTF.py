@@ -83,7 +83,6 @@ def admin_required(param: callable):
         reset_rate_limit()
 
         is_browser_request = request.accept_mimetypes.best_match(["text/html", "application/json"]) == "text/html"
-        print(is_browser_request)
 
         if is_browser_request:
             if 'team_name' not in session:
@@ -162,21 +161,18 @@ def execute_query():
 
 
 @app.route('/abort/<http_code>')
-@admin_required
+# @admin_required
 def abort_num(http_code: int):
-    try:
-        http_status_codes = [
-            100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
-            300, 301, 302, 303, 304, 305, 306, 307, 308,
-            400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414,
-            415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 427, 428, 429, 431, 451,
-            500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511
-        ]
-        if int(http_code) not in http_status_codes:
-            abort(400, description=f"Invalid http code passed to abort, {http_code}")
-        abort(http_code, description=f"Requested to abort with code {http_code}")
-    except Exception as e:
-        abort(500, description=f"Error occurred in /abort - {e}")
+    http_status_codes = [
+        100, 101, 102, 103, 200, 201, 202, 203, 204, 205, 206, 207, 208, 226,
+        300, 301, 302, 303, 304, 305, 306, 307, 308,
+        400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414,
+        415, 416, 417, 418, 421, 422, 423, 424, 425, 426, 427, 428, 429, 431, 451,
+        500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511
+    ]
+    if int(http_code) not in http_status_codes:
+        abort(400, description=f"Invalid http code passed to abort, {http_code}")
+    abort(int(http_code), description=f"Requested to abort with code {http_code}")
 
 
 @app.route('/api/status', methods=['GET'])
@@ -1346,6 +1342,7 @@ def steganography():
             abort(500, description="Challenge 5")
 
     return render_template_string(COMP_TEMPLATE, challenge=5, description=description)
+
 
 @app.route('/api')
 def api_help():
