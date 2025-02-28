@@ -11,7 +11,7 @@ from typing import List
 import psycopg2
 import requests
 from PIL import Image, ImageDraw, ImageFont
-from flask import Flask, request, redirect, url_for, flash
+from flask import Flask, request, redirect, url_for, flash, Response
 from flask import render_template_string, session, jsonify, make_response, abort
 from flask import send_file
 from flask import send_from_directory
@@ -58,12 +58,16 @@ RATE_LIMIT = 0
 LAST_RESET_TIME = time.time()
 START_TIME = time.time()
 
+# DB Global Var
+DB_URL_AIVEN = os.getenv("DB_URL_AIVEN")
+DB_NAME = os.getenv("DB_NAME")
+
 
 # ------------------------- DATABASE ------------------------- #
 
 # Database connection
 def get_db_connection() -> psycopg2._psycopg.connection:
-    conn = psycopg2.connect(os.getenv("DB_URL_AIVEN"), dbname=os.getenv("DB_NAME"))
+    conn = psycopg2.connect(dsn=DB_URL_AIVEN, dbname=DB_NAME)
     return conn
 
 
@@ -213,6 +217,51 @@ def download_challenge_files(challenge_id: str):
             return abort(500, description="Download Challenge Files Failed")
     else:
         return abort(404, description="Challenge files not found")
+
+
+@app.route('/backup/db', methods=['GET'])
+@admin_required
+def backup_db():
+    try:
+        # Get the database connection using the global DB_NAME
+        conn = get_db_connection()
+
+        # Use a BytesIO object to simulate a file in memory
+        backup_file = BytesIO()
+
+        with conn.cursor() as cursor:
+            # Query to get all table names from the public schema
+            cursor.execute("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+            """)
+            tables = cursor.fetchall()
+
+            # Iterate over each table and export its data
+            for table in tables:
+                table_name = table[0]
+
+                # Use psycopg2.sql.Identifier to safely handle table names
+                safe_table_name = sql.Identifier(table_name)
+
+                # Safely construct the COPY command using sql.Identifier
+                query = sql.SQL("COPY (SELECT * FROM {} ) TO STDOUT WITH CSV HEADER").format(safe_table_name)
+
+                # Execute the safe query to dump the table's data
+                cursor.copy_expert(query, backup_file)
+
+        # Seek to the beginning of the BytesIO object to read from the start
+        backup_file.seek(0)
+
+        # Create a response to stream the file directly to the user
+        return Response(
+            backup_file,
+            mimetype='text/csv',
+            headers={"Content-Disposition": "attachment; filename=database_backup.csv"}
+        )
+    except Exception:
+        return abort(500, description="Error backing up database")
 
 
 # -------------------------- SHOP ------------------------------#

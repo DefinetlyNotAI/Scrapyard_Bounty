@@ -45,7 +45,7 @@
         <div class="tabs">
             <div class="tab active" data-tab="tables">Tables</div>
             <div class="tab" data-tab="query">Query</div>
-            <div class="tab" data-tab="backup" style="background: grey; cursor: not-allowed;">Backup</div>
+            <div class="tab" data-tab="backup">Backup</div>
         </div>
 
         <div class="panel active" id="tables-panel">
@@ -68,7 +68,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                        <!-- Data will be populated here -->
+                    <!-- Data will be populated here -->
                     </tbody>
                 </table>
             </div>
@@ -89,9 +89,7 @@
 
         <div class="panel" id="backup-panel">
             <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-                <button class="btn btn-primary" disabled id="createBackup"
-                        style="background: grey; cursor: not-allowed;">Create Backup (WIP)
-                </button>
+                <button class="btn btn-primary" id="createBackup">Create Backup</button>
                 <button class="btn btn-primary" disabled id="restoreBackup"
                         style="background: grey; cursor: not-allowed;">Restore from Backup (WIP)
                 </button>

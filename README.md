@@ -155,6 +155,25 @@ and whether admin access is required as well as rate limits.
 
 ---
 
+### `backup_db`
+
+- **URL:** `/backup/db`
+- **Method:** GET
+- **Description:** Downloads CSV of the DB.
+- **Admin?:** 🔐
+- **Rate Limit:** 🚀
+- **Plug and Play?:** ✅
+- **Response preview**
+    - `#200` -> *(Binary file download)*
+    - `#500`:
+       ```json
+       {
+         "error": "Error backing up database"
+       }
+       ```
+
+---
+
 ### `get_db_size`
 
 - **URL:** `/api/get/size`

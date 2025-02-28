@@ -415,3 +415,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await populateTableDropdown();
     await init();
 });
+
+document.getElementById('createBackup').addEventListener('click', function() {
+    window.location.href = '/backup/db';
+});
