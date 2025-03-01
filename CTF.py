@@ -223,45 +223,29 @@ def download_challenge_files(challenge_id: str):
 @admin_required
 def backup_db():
     try:
-        # Get the database connection using the global DB_NAME
+        # Get the PostgreSQL database connection
         conn = get_db_connection()
-
-        # Use a BytesIO object to simulate a file in memory
         backup_file = BytesIO()
 
         with conn.cursor() as cursor:
-            # Query to get all table names from the public schema
-            cursor.execute("""
-                SELECT table_name
-                FROM information_schema.tables
-                WHERE table_schema = 'public'
-            """)
+            # Use PostgreSQL's built-in COPY command to dump the entire database
+            cursor.execute("SELECT tablename FROM pg_tables WHERE schemaname='public'")
             tables = cursor.fetchall()
 
-            # Iterate over each table and export its data
             for table in tables:
                 table_name = table[0]
+                cursor.copy_expert(f"COPY {table_name} TO STDOUT WITH BINARY", backup_file)
 
-                # Use psycopg2.sql.Identifier to safely handle table names
-                safe_table_name = sql.Identifier(table_name)
-
-                # Safely construct the COPY command using sql.Identifier
-                query = sql.SQL("COPY (SELECT * FROM {} ) TO STDOUT WITH CSV HEADER").format(safe_table_name)
-
-                # Execute the safe query to dump the table's data
-                cursor.copy_expert(query, backup_file)
-
-        # Seek to the beginning of the BytesIO object to read from the start
         backup_file.seek(0)
 
-        # Create a response to stream the file directly to the user
+        # Create a response to stream the file to the user
         return Response(
             backup_file,
-            mimetype='text/csv',
-            headers={"Content-Disposition": "attachment; filename=database_backup.csv"}
+            mimetype='application/octet-stream',
+            headers={"Content-Disposition": "attachment; filename=database_backup.dump"}
         )
-    except Exception:
-        return abort(500, description="Error backing up database")
+    except Exception as e:
+        return abort(500, description=f"Error backing up database as {e}")
 
 
 # -------------------------- SHOP ------------------------------#
