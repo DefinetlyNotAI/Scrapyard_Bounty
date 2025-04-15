@@ -3,6 +3,9 @@
 This project is a Capture The Flag (CTF) platform built using Python and Flask. It includes various challenges such as
 Cryptography, Web Exploitation, Reverse Engineering, Forensics, and Steganography.
 
+> [!NOTE]
+> Fully compiled archival version [here](https://github.com/DefinetlyNotAI/Scrapyard_Sharjah_Archive)
+
 ## Features
 
 - User authentication and session management
